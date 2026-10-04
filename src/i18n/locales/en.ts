@@ -1,0 +1,107 @@
+import type { Dict } from '../index';
+
+const en: Dict = {
+  'header.title': 'AI Fashion Mirror',
+  'header.subtitle': 'Real-time body-tracked virtual try-on · runs fully in your browser',
+
+  'controls.start_camera': 'Start camera',
+  'controls.stop_camera': 'Stop camera',
+  'controls.switch_camera': 'Switch camera',
+  'controls.capture_photo': 'Capture photo',
+  'controls.fullscreen': '⛶ Fullscreen',
+  'controls.fullscreen_title': 'Fullscreen',
+  'controls.debug_on': 'Debug on',
+  'controls.debug_off': 'Debug off',
+  'controls.debug_title': 'Developer debug overlay',
+
+  'camera.off_title': 'Camera is off',
+  'camera.off_body': 'Stand 1–2 m from the camera with your upper body in frame.',
+  'camera.engine_failed': 'Engine failed to load — check the error above.',
+  'camera.loading_engine': 'Preparing engine…',
+  'camera.loading_models': 'Loading vision models…',
+
+  'garment_panel.title': 'Select clothing',
+  'garment_panel.upload': '⬆ Upload product image',
+  'garment_panel.upload_title': 'Upload a product photo (processed locally, never uploaded)',
+  'garment_panel.upload_body': 'Photos are processed in your browser. Nothing is uploaded.',
+  'garment_panel.garment_active': 'Garment active',
+  'garment_panel.remove': 'Remove clothing',
+  'garment_panel.wearing': 'Wearing:',
+
+  'errors.CAMERA_PERMISSION_DENIED': 'Camera access was blocked. Allow camera permission and try again.',
+  'errors.CAMERA_UNAVAILABLE': 'No camera was found on this device.',
+  'errors.CAMERA_IN_USE': 'The camera is in use by another application.',
+  'errors.INSECURE_CONTEXT': 'Camera requires HTTPS or localhost.',
+  'errors.NO_PERSON_DETECTED': 'No person detected. Step into the camera frame.',
+  'errors.MULTIPLE_PEOPLE_DETECTED': 'Multiple people detected. The virtual try-on supports one person at a time.',
+  'errors.POOR_TRACKING': 'Tracking is unstable. Improve lighting and keep your upper body in frame.',
+  'errors.PERSON_OUT_OF_FRAME': 'Please stand fully inside the camera frame.',
+  'errors.CLOTHING_IMAGE_INVALID': 'That image could not be used. Try a clear product photo (PNG/JPEG).',
+  'errors.CLOTHING_UNSUPPORTED_TYPE': 'That image format is not supported.',
+  'errors.MODEL_LOADING_FAILED': 'Vision models failed to load. Check your connection and reload.',
+  'errors.MODEL_NOT_READY': 'Engine is still starting. Please try again in a moment.',
+  'errors.RENDER_FAILURE': 'Something went wrong while rendering. Please restart the camera.',
+  'errors.UNKNOWN': 'Unexpected error while starting the camera.',
+
+  'tracking.idle': 'Camera off',
+  'tracking.searching': 'Looking for you…',
+  'tracking.tracking': 'Tracking',
+  'tracking.coasting': 'Tracking',
+  'tracking.lost': 'Lost tracking',
+
+  'debug.title': 'DEBUG',
+  'debug.skeleton': 'skeleton',
+  'debug.mask': 'mask',
+  'debug.fps': 'FPS',
+  'debug.frame': 'Frame',
+  'debug.pose': 'Pose',
+  'debug.seg': 'Seg',
+  'debug.infer_fps': 'Infer FPS',
+  'debug.heap': 'Heap',
+  'debug.tracking': 'Tracking',
+
+  'share.download_png': 'Download PNG',
+  'share.close': 'Close',
+  'share.captured_alt': 'Captured try-on',
+
+  'recording.start': 'Record',
+  'recording.stop': 'Stop',
+  'recording.download_webm': 'Download WebM',
+
+  'fit.title': 'Fit adjustments',
+  'fit.bust': 'Bust',
+  'fit.waist': 'Waist',
+  'fit.hip': 'Hip',
+  'fit.height': 'Height',
+  'fit.reset': 'Reset',
+
+  'auth.login': 'Log in',
+  'auth.register': 'Sign up',
+  'auth.logout': 'Log out',
+
+  'commerce.add_to_cart': 'Add to cart',
+  'commerce.cart': 'Cart',
+  'commerce.try_on': 'Try on',
+
+  'common.dismiss': 'Dismiss',
+
+  'lang.en': 'EN',
+  'lang.hi': 'हिं',
+
+  'a11y.canvas_label': 'Virtual try-on viewport',
+  'a11y.upload_label': 'Upload product image file',
+  'a11y.try_on_product': 'Try on {name}',
+  'a11y.garment_loaded': '{name} is now loaded',
+  'a11y.fullscreen': 'Toggle fullscreen mode',
+  'a11y.start_camera': 'Start camera',
+  'a11y.stop_camera': 'Stop camera',
+  'a11y.switch_camera': 'Switch camera',
+  'a11y.capture_photo': 'Capture photo',
+  'a11y.recording_started': 'Recording started',
+  'a11y.recording_stopped': 'Recording stopped',
+  'a11y.cart_added': 'Item added to cart',
+  'a11y.auth_success': 'Authentication successful',
+  'a11y.auth_failed': 'Authentication failed',
+};
+
+export default en;

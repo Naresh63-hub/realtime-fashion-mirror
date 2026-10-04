@@ -1,0 +1,107 @@
+import type { Dict } from '../index';
+
+const hiIN: Dict = {
+  'header.title': 'AI Fashion Mirror',
+  'header.subtitle': 'रीयल-टाइम बॉडी-ट्रैक्ड वर्चुअल ट्राई-ऑन · पूरी तरह आपके ब्राउज़र में चलता है',
+
+  'controls.start_camera': 'कैमरा शुरू करें',
+  'controls.stop_camera': 'कैमरा बंद करें',
+  'controls.switch_camera': 'कैमरा बदलें',
+  'controls.capture_photo': 'फोटो कैप्चर करें',
+  'controls.fullscreen': '⛶ फुलस्क्रीन',
+  'controls.fullscreen_title': 'फुलस्क्रीन',
+  'controls.debug_on': 'डीबग चालू',
+  'controls.debug_off': 'डीबग बंद',
+  'controls.debug_title': 'डेवलपर डीबग ओवरले',
+
+  'camera.off_title': 'कैमरा बंद है',
+  'camera.off_body': 'कैमरे से 1–2 मीटर की दूरी पर खड़े हों और अपना ऊपरी शर्क फ्रेम में रखें।',
+  'camera.engine_failed': 'इंजन लोड करने में विफल — ऊपर दी गई त्रुटि की जाँच करें।',
+  'camera.loading_engine': 'इंजन तैयार हो रहा है…',
+  'camera.loading_models': 'विज़न मॉडल लोड हो रहे हैं…',
+
+  'garment_panel.title': 'कपड़ा चुनें',
+  'garment_panel.upload': '⬆ प्रोडक्ट इमेज अपलोड करें',
+  'garment_panel.upload_title': 'प्रोडक्ट फोटो अपलोड करें (स्थानीय रूप से प्रोसेस, कभी अपलोड नहीं)',
+  'garment_panel.upload_body': 'तस्वीरें आपके ब्राउज़र में प्रोसेस होती हैं। कुछ भी अपलोड नहीं होता।',
+  'garment_panel.garment_active': 'कपड़ा सक्रिय है',
+  'garment_panel.remove': 'कपड़ा हटाएं',
+  'garment_panel.wearing': 'पहना हुआ:',
+
+  'errors.CAMERA_PERMISSION_DENIED': 'कैमरा एक्सेस ब्लॉक कर दिया गया। कैमरा परमिशन अनुमति दें और फिर से प्रयास करें।',
+  'errors.CAMERA_UNAVAILABLE': 'इस डिवाइस पर कोई कैमरा नहीं मिला।',
+  'errors.CAMERA_IN_USE': 'कैमरा किसी दूसरे एप्लिकेशन द्वारा उपयोग में है।',
+  'errors.INSECURE_CONTEXT': 'कैमरे के लिए HTTPS या localhost आवश्यक है।',
+  'errors.NO_PERSON_DETECTED': 'कोई व्यक्ति नहीं मिला। कैमरा फ्रेम में आएं।',
+  'errors.MULTIPLE_PEOPLE_DETECTED': 'एक से अधिक व्यक्ति मिले। वर्चुअल ट्राई-ऑन एक समय में एक व्यक्ति का समर्थन करता है।',
+  'errors.POOR_TRACKING': 'ट्रैकिंग अस्थिर है। रोशनी बेहतर करें और अपना ऊपरी शर्क फ्रेम में रखें।',
+  'errors.PERSON_OUT_OF_FRAME': 'कृपया पूरी तरह कैमरा फ्रेम के अंदर खड़े हों।',
+  'errors.CLOTHING_IMAGE_INVALID': 'वह इमेज उपयोग नहीं की जा सकी। स्पष्ट प्रोडक्ट फोटो (PNG/JPEG) का प्रयास करें।',
+  'errors.CLOTHING_UNSUPPORTED_TYPE': 'वह इमेज फॉर्मेट समर्थित नहीं है।',
+  'errors.MODEL_LOADING_FAILED': 'विज़न मॉडल लोड करने में विफल। अपना कनेक्शन जाँच करें और रीलोड करें।',
+  'errors.MODEL_NOT_READY': 'इंजन अभी शुरू हो रहा है। कृपया कुछ पलों में फिर से प्रयास करें।',
+  'errors.RENDER_FAILURE': 'रेंडरिंग के दौरान कुछ गलत हुआ। कृपया कैमरा पुनः शुरू करें।',
+  'errors.UNKNOWN': 'कैमरा शुरू करते समय अप्रत्याशित त्रुटि।',
+
+  'tracking.idle': 'कैमरा बंद',
+  'tracking.searching': 'आपकी तलाश में…',
+  'tracking.tracking': 'ट्रैकिंग',
+  'tracking.coasting': 'ट्रैकिंग',
+  'tracking.lost': 'ट्रैकिंग खो गई',
+
+  'debug.title': 'DEBUG',
+  'debug.skeleton': 'स्केलेटन',
+  'debug.mask': 'मास्क',
+  'debug.fps': 'FPS',
+  'debug.frame': 'फ्रेम',
+  'debug.pose': 'पोज़',
+  'debug.seg': 'सेग',
+  'debug.infer_fps': 'इनफर FPS',
+  'debug.heap': 'हीप',
+  'debug.tracking': 'ट्रैकिंग',
+
+  'share.download_png': 'PNG डाउनलोड करें',
+  'share.close': 'बंद करें',
+  'share.captured_alt': 'कैप्चर किया गया ट्राई-ऑन',
+
+  'recording.start': 'रिकॉर्ड करें',
+  'recording.stop': 'रोकें',
+  'recording.download_webm': 'WebM डाउनलोड करें',
+
+  'fit.title': 'फिट समायोजन',
+  'fit.bust': 'छाती',
+  'fit.waist': 'कमर',
+  'fit.hip': 'कूल्हा',
+  'fit.height': 'ऊंचाई',
+  'fit.reset': 'रीसेट',
+
+  'auth.login': 'लॉग इन करें',
+  'auth.register': 'साइन अप करें',
+  'auth.logout': 'लॉग आउट करें',
+
+  'commerce.add_to_cart': 'कार्ट में जोड़ें',
+  'commerce.cart': 'कार्ट',
+  'commerce.try_on': 'ट्राई ऑन',
+
+  'common.dismiss': 'हटाएं',
+
+  'lang.en': 'EN',
+  'lang.hi': 'हिं',
+
+  'a11y.canvas_label': 'वर्चुअल ट्राई-ऑन व्यूपोर्ट',
+  'a11y.upload_label': 'प्रोडक्ट इमेज फाइल अपलोड करें',
+  'a11y.try_on_product': '{name} को ट्राई करें',
+  'a11y.garment_loaded': '{name} अब लोड हो गया है',
+  'a11y.fullscreen': 'फुलस्क्रीन मोड टॉगल करें',
+  'a11y.start_camera': 'कैमरा शुरू करें',
+  'a11y.stop_camera': 'कैमरा बंद करें',
+  'a11y.switch_camera': 'कैमरा बदलें',
+  'a11y.capture_photo': 'फोटो कैप्चर करें',
+  'a11y.recording_started': 'रिकॉर्डिंग शुरू हो गई',
+  'a11y.recording_stopped': 'रिकॉर्डिंग रुक गई',
+  'a11y.cart_added': 'आइटम कार्ट में जोड़ा गया',
+  'a11y.auth_success': 'प्रमाणीकरण सफल',
+  'a11y.auth_failed': 'प्रमाणीकरण विफल',
+};
+
+export default hiIN;
