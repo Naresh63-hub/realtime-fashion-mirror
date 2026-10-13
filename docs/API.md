@@ -166,5 +166,74 @@ class Renderer {
 
 ## Sample garment catalog — `src/services/garmentCatalog.ts`
 
-`GARMENT_CATALOG: GarmentCatalogEntry[]` — pure data. Replace with a fetch
-from a backend to go live-commerce without touching any other module.
+`GARMENT_CATALOG: GarmentCatalogEntry[]` and `FULL_PRODUCT_CATALOG: Product[]`. Pure data. Includes utilities for `getProductById`, `getProductsByCategory`, and `searchProducts`.
+
+## `VirtualTryOnService` — `src/services/virtualTryOnService.ts`
+
+Asynchronous job orchestrator for photo virtual try-on matching Section 7:
+
+```ts
+class VirtualTryOnService {
+  static validateInputs(personImage: string, garmentImage: string): { valid: boolean; error?: string };
+  static async generateTryOn(request: TryOnRequest): Promise<TryOnJob>;
+  static async getJobStatus(jobId: string): Promise<TryOnJob>;
+  static async retrieveResult(jobId: string): Promise<TryOnResult>;
+  static async cancelJob(jobId: string): Promise<boolean>;
+}
+```
+
+## `ProductExtractor` — `src/services/productExtractor.ts`
+
+SSRF-safe URL validation and metadata extraction:
+
+```ts
+function validateProductUrl(url: string): { valid: boolean; error?: string };
+function inferCategoryFromText(text: string): ClothingCategory;
+async function extractProductFromUrl(url: string): Promise<ExtractedProduct>;
+```
+
+## `StorageService` — `src/services/storageService.ts`
+
+Local persistence and privacy compliance:
+
+```ts
+class StorageService {
+  static getSavedLooks(): SavedLook[];
+  static saveLook(look: Omit<SavedLook, 'id' | 'createdAt'>): SavedLook;
+  static deleteLook(lookId: string): boolean;
+  static toggleFavoriteLook(lookId: string): boolean;
+  static getFavoriteProductIds(): string[];
+  static toggleFavoriteProduct(productId: string): boolean;
+  static getPreferences(): UserPreferences;
+  static updatePreferences(patch: Partial<UserPreferences>): UserPreferences;
+  static exportAllData(): string; // GDPR compliant JSON export
+  static clearAllData(): void;    // Purges all local storage
+}
+```
+
+---
+
+# Backend Microservice API (`backend/main.py`)
+
+FastAPI REST endpoints for product extraction and async try-on jobs.
+
+### `GET /api/health`
+Returns service status, version, and supported capabilities.
+
+### `POST /api/products/extract`
+Validates submitted shopping URL against SSRF and extracts metadata.
+- **Request Body**: `{"url": "https://www.myntra.com/..."}`
+- **Security**: Blocks localhost, loopbacks, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, and cloud metadata (`169.254.169.254`).
+- **Response**: `UrlExtractResponse` (`title`, `brand`, `price`, `currency`, `images`, `selected_image_url`, `category`, `retailer`)
+
+### `POST /api/tryon/jobs`
+Submits an asynchronous virtual try-on inference job.
+- **Request Body**: `{"person_image": "...", "garment_image": "...", "garment_name": "...", "category": "shirt", "model_name": "client-high-res"}`
+- **Response**: `TryOnJobResponse` (`job_id`, `status`, `progress`, timestamps)
+
+### `GET /api/tryon/jobs/{job_id}`
+Retrieves status and output URL for a previously submitted job.
+
+### `DELETE /api/tryon/jobs/{job_id}`
+Cancels an active job.
+

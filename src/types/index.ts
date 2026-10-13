@@ -123,6 +123,7 @@ export enum ClothingCategory {
   JACKET = 'jacket',
   TOP = 'top',
   KURTI = 'kurti',
+  DRESS = 'dress',
   UNKNOWN = 'unknown',
 }
 
@@ -262,6 +263,96 @@ export interface Product {
   description: string;
   imageUrl: string;
   swatch: string;
+  brand?: string;
+  retailerUrl?: string;
+  images?: string[];
+  colors?: { name: string; hex: string; imageUrl?: string }[];
+  sizes?: string[];
+  rating?: number;
+  inStock?: boolean;
+  details?: string[];
+}
+
+export interface ExtractedProduct {
+  title: string;
+  brand?: string;
+  price?: number;
+  currency?: string;
+  images: string[];
+  selectedImageUrl: string;
+  originalUrl: string;
+  category: ClothingCategory;
+  retailer: string;
+  description?: string;
+  sizes?: string[];
+}
+
+export type TryOnJobStatus = 'idle' | 'queued' | 'processing' | 'succeeded' | 'failed' | 'cancelled';
+
+export interface TryOnJob {
+  id: string;
+  status: TryOnJobStatus;
+  progress: number;
+  createdAt: number;
+  updatedAt: number;
+  personImageUrl: string;
+  garmentImageUrl: string;
+  garmentName: string;
+  garmentCategory: ClothingCategory;
+  resultImageUrl?: string;
+  error?: string;
+  modelName: string;
+}
+
+export interface TryOnResult {
+  jobId: string;
+  personImageUrl: string;
+  resultImageUrl: string;
+  garmentImageUrl: string;
+  garmentName: string;
+  garmentCategory: ClothingCategory;
+  timestamp: number;
+  modelUsed: string;
+  confidence?: number;
+}
+
+export interface SavedLook {
+  id: string;
+  title: string;
+  personImageUrl: string;
+  resultImageUrl: string;
+  garmentId: string;
+  garmentName: string;
+  garmentCategory: ClothingCategory;
+  garmentImageUrl: string;
+  priceINR?: number;
+  createdAt: number;
+  isFavorite: boolean;
+  notes?: string;
+  tags?: string[];
+}
+
+export interface UserPreferences {
+  theme: 'dark' | 'light' | 'system';
+  cameraResolution: '720p' | '1080p';
+  preferredFacingMode: FacingMode;
+  mirrorUserCamera: boolean;
+  smoothingFactor: number;
+  confidenceThreshold: number;
+  showLandmarksByDefault: boolean;
+  inferenceMode: 'client-high-res' | 'cloud-genai';
+  cloudVtonApiUrl?: string;
+  storagePreference: 'local' | 'session-only';
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email?: string;
+  avatarUrl?: string;
+  preferences: UserPreferences;
+  totalTryOns: number;
+  memberSince: number;
 }
 
 export interface CartLineItem {

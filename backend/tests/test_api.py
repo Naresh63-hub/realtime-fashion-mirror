@@ -1,0 +1,113 @@
+"""
+Pytest integration tests for FastAPI backend.
+Covers:
+- SSRF prevention
+- Product URL extraction
+- Virtual Try-On job lifecycle
+- API validation
+"""
+
+import pytest
+from fastapi.testclient import TestClient
+
+from backend.main import app
+from backend.security import validate_url_ssrf_safe
+from fastapi import HTTPException
+
+
+client = TestClient(app)
+
+
+def test_health_check():
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "ssrf_protection" in data["features"]
+
+
+def test_ssrf_rejects_localhost():
+    with pytest.raises(HTTPException) as exc_info:
+        validate_url_ssrf_safe("http://localhost:8080/admin")
+    assert exc_info.value.status_code == 400
+    assert "forbidden" in exc_info.value.detail.lower() or "restricted" in exc_info.value.detail.lower()
+
+
+def test_ssrf_rejects_private_ips():
+    dangerous_urls = [
+        "http://127.0.0.1:3000/secret",
+        "http://10.0.0.1/internal-api",
+        "http://192.168.1.1/router-config",
+        "http://169.254.169.254/latest/meta-data/",
+    ]
+    for url in dangerous_urls:
+        with pytest.raises(HTTPException) as exc_info:
+            validate_url_ssrf_safe(url)
+        assert exc_info.value.status_code == 400
+
+
+def test_ssrf_rejects_unsupported_scheme():
+    with pytest.raises(HTTPException) as exc_info:
+        validate_url_ssrf_safe("file:///etc/passwd")
+    assert exc_info.value.status_code == 400
+
+
+def test_product_extract_myntra_fixture():
+    response = client.post("/api/products/extract", json={"url": "https://www.myntra.com/shirts/roadster-shirt/12345/buy"})
+    assert response.status_code == 200
+    data = response.json()
+    assert "Roadster" in data["title"]
+    assert data["category"] == "shirt"
+    assert len(data["images"]) > 0
+    assert data["retailer"] == "Myntra"
+
+
+def test_product_extract_amazon_fixture():
+    response = client.post("/api/products/extract", json={"url": "https://www.amazon.in/dp/B08XYZ1234"})
+    assert response.status_code == 200
+    data = response.json()
+    assert "Amazon Essentials" in data["title"]
+    assert data["category"] == "t-shirt"
+    assert data["retailer"] == "Amazon India"
+
+
+def test_product_extract_ssrf_blocked_endpoint():
+    response = client.post("/api/products/extract", json={"url": "http://127.0.0.1:8000/internal"})
+    assert response.status_code == 400
+    assert "forbidden" in response.json()["detail"].lower() or "restricted" in response.json()["detail"].lower()
+
+
+def test_tryon_job_lifecycle():
+    # 1. Create job
+    create_resp = client.post(
+        "/api/tryon/jobs",
+        json={
+            "person_image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+            "garment_image": "/garments/shirt.svg",
+            "garment_name": "Indigo Denim Shirt",
+            "category": "shirt",
+            "model_name": "client-high-res",
+        },
+    )
+    assert create_resp.status_code == 201
+    job = create_resp.json()
+    assert "job_id" in job
+    job_id = job["job_id"]
+    assert job["status"] == "succeeded"
+
+    # 2. Get status
+    status_resp = client.get(f"/api/tryon/jobs/{job_id}")
+    assert status_resp.status_code == 200
+    assert status_resp.json()["job_id"] == job_id
+
+
+def test_tryon_job_invalid_input():
+    resp = client.post(
+        "/api/tryon/jobs",
+        json={
+            "person_image": "",
+            "garment_image": "",
+            "garment_name": "Tee",
+        },
+    )
+    assert resp.status_code == 400
