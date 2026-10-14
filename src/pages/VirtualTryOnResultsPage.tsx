@@ -15,6 +15,9 @@ import {
   ChevronDown,
   ChevronUp,
   UserCheck,
+  Camera,
+  UploadCloud,
+  ArrowRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
@@ -35,15 +38,13 @@ export const VirtualTryOnResultsPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'slider' | 'side-by-side'>('slider');
   const [showFitStudio, setShowFitStudio] = useState(true);
 
-  // Fallback demo result so the page never errors
-  const personImg =
-    lastResult?.personImageUrl ||
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop&q=80';
+  // Use the user's actual uploaded photograph or live capture
+  const personImg = lastResult?.personImageUrl || '';
   const garment = selectedGarment || FULL_PRODUCT_CATALOG[0];
 
   // Dynamic live try-on image
   const [currentResultImg, setCurrentResultImg] = useState<string>(
-    lastResult?.resultImageUrl || personImg
+    lastResult?.resultImageUrl || ''
   );
   const [isReRendering, setIsReRendering] = useState(false);
 
@@ -93,6 +94,7 @@ export const VirtualTryOnResultsPage: React.FC = () => {
 
   // Trigger re-computation on adjustment changes
   useEffect(() => {
+    if (!personImg) return;
     recomputeDrape({
       offsetY,
       offsetX,
@@ -102,7 +104,7 @@ export const VirtualTryOnResultsPage: React.FC = () => {
       opacity,
       framingPreset,
     });
-  }, [offsetY, offsetX, scale, widthFactor, rotation, opacity, framingPreset, recomputeDrape]);
+  }, [personImg, offsetY, offsetX, scale, widthFactor, rotation, opacity, framingPreset, recomputeDrape]);
 
   // Quick preset handlers
   const handlePresetPortrait = () => {
@@ -196,6 +198,49 @@ export const VirtualTryOnResultsPage: React.FC = () => {
     toast.info('Added to outfit comparison list.');
     navigate('compare');
   };
+
+  // If no try-on has been generated yet, show prompt instead of demo images
+  if (!lastResult?.personImageUrl) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-20 text-center space-y-6">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-violet-600/20 text-violet-400 border border-violet-500/30 shadow-xl">
+          <Sparkles className="h-10 w-10" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-white">No Virtual Try-On Result Yet</h2>
+          <p className="text-sm text-gray-400 max-w-md mx-auto">
+            Upload your personal photograph or open your live camera to see clothing dynamically drape on your body.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
+          <button
+            type="button"
+            onClick={() => navigate('photo-upload')}
+            className="flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-violet-600/30 hover:bg-violet-500 transition"
+          >
+            <UploadCloud className="h-4 w-4" />
+            <span>Upload Your Photo</span>
+            <ArrowRight className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('live')}
+            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
+          >
+            <Camera className="h-4 w-4 text-violet-400" />
+            <span>Open Live Camera</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('gallery')}
+            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
+          >
+            <span>Browse Garments</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-8">

@@ -6,7 +6,6 @@ import {
   RefreshCw,
   ArrowRight,
   ShieldCheck,
-  Image as ImageIcon,
   Shirt,
   X,
 } from 'lucide-react';
@@ -15,25 +14,6 @@ import { useApp } from '../context/AppContext';
 import { VirtualTryOnService } from '../services/virtualTryOnService';
 import { FULL_PRODUCT_CATALOG } from '../services/garmentCatalog';
 import { Spinner } from '../components/ui';
-
-// High quality model presets for instant testing
-const DEMO_PORTRAIT_PRESETS = [
-  {
-    id: 'preset-casual-male',
-    label: 'Casual Portrait (Male)',
-    url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'preset-fashion-female',
-    label: 'Studio Portrait (Female)',
-    url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'preset-standing-neutral',
-    label: 'Full Standing Fit',
-    url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800&auto=format&fit=crop&q=80',
-  },
-];
 
 export const PhotoUploadPage: React.FC = () => {
   const {
@@ -164,7 +144,7 @@ export const PhotoUploadPage: React.FC = () => {
           <span>Personal Photo Virtual Try-On</span>
         </h1>
         <p className="text-xs sm:text-sm text-gray-400 mt-1">
-          Upload a clear photograph of yourself or pick a preset portrait to simulate how clothing drapes on your body.
+          Upload a clear photograph of yourself to simulate how clothing drapes on your body.
         </p>
       </div>
 
@@ -253,36 +233,6 @@ export const PhotoUploadPage: React.FC = () => {
               </div>
             </div>
           )}
-
-          {/* Quick Preset Models */}
-          <div className="rounded-3xl border border-white/10 bg-gray-900/50 p-4 backdrop-blur-xl">
-            <div className="flex items-center gap-2 mb-3">
-              <ImageIcon className="h-3.5 w-3.5 text-violet-400" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                Or Try with Sample Model Portraits
-              </h4>
-            </div>
-            <div className="grid grid-cols-3 gap-2.5">
-              {DEMO_PORTRAIT_PRESETS.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => {
-                    setUploadedPhoto(preset.url);
-                    toast.success(`Selected ${preset.label}`);
-                  }}
-                  className="flex flex-col items-center gap-1.5 rounded-2xl border border-white/10 bg-white/5 p-2 text-center hover:border-violet-500/50 hover:bg-violet-950/20 transition group"
-                >
-                  <img
-                    src={preset.url}
-                    alt={preset.label}
-                    className="h-16 w-16 rounded-xl object-cover group-hover:scale-105 transition"
-                  />
-                  <span className="text-[10px] font-medium text-gray-300 truncate w-full">{preset.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Right Column: Garment Selector & Try-On Action (5 cols) */}
