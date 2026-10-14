@@ -1,23 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   SlidersHorizontal,
   Download,
   Heart,
   Columns2,
-  Sparkles,
-  ArrowRight,
-  Share2,
   CheckCircle2,
+  Wand2,
+  RotateCcw,
+  MoveVertical,
+  MoveHorizontal,
+  Maximize2,
+  RotateCw,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  UserCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
 import { StorageService } from '../services/storageService';
 import { FULL_PRODUCT_CATALOG } from '../services/garmentCatalog';
-import { ClothingCategory } from '../types';
+import { VirtualTryOnService, type TryOnFitOptions } from '../services/virtualTryOnService';
 
 export const VirtualTryOnResultsPage: React.FC = () => {
   const {
     lastResult,
+    setLastResult,
     selectedGarment,
     navigate,
     refreshSavedLooks,
@@ -25,27 +33,141 @@ export const VirtualTryOnResultsPage: React.FC = () => {
 
   const [sliderPos, setSliderPos] = useState(50); // 0 to 100%
   const [viewMode, setViewMode] = useState<'slider' | 'side-by-side'>('slider');
+  const [showFitStudio, setShowFitStudio] = useState(true);
 
-  // If no previous result, provide fallback demo result so the page never errors
+  // Fallback demo result so the page never errors
   const personImg =
     lastResult?.personImageUrl ||
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop&q=80';
-  const resultImg = lastResult?.resultImageUrl || personImg;
   const garment = selectedGarment || FULL_PRODUCT_CATALOG[0];
+
+  // Dynamic live try-on image
+  const [currentResultImg, setCurrentResultImg] = useState<string>(
+    lastResult?.resultImageUrl || personImg
+  );
+  const [isReRendering, setIsReRendering] = useState(false);
+
+  // Interactive Fit Adjustments
+  const [offsetY, setOffsetY] = useState(0); // Vertical offset in pixels (-300 to +300)
+  const [offsetX, setOffsetX] = useState(0); // Horizontal offset in pixels (-200 to +200)
+  const [scale, setScale] = useState(1.0); // Overall scale (0.5 to 1.8)
+  const [widthFactor, setWidthFactor] = useState(1.0); // Silhouette width (0.8 to 1.4)
+  const [rotation, setRotation] = useState(0); // Degrees (-25 to +25)
+  const [opacity, setOpacity] = useState(0.98);
+  const [framingPreset, setFramingPreset] = useState<'auto' | 'portrait' | 'half-body' | 'full-body'>('auto');
+
+  // Debounce ref to keep slider performance ultra smooth
+  const renderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const recomputeDrape = useCallback(
+    (opts: TryOnFitOptions) => {
+      if (renderTimeoutRef.current) {
+        clearTimeout(renderTimeoutRef.current);
+      }
+
+      renderTimeoutRef.current = setTimeout(async () => {
+        try {
+          setIsReRendering(true);
+          const updated = await VirtualTryOnService.renderClientTryOn(
+            personImg,
+            garment.imageUrl,
+            garment.category,
+            opts
+          );
+          setCurrentResultImg(updated);
+          if (lastResult) {
+            setLastResult({
+              ...lastResult,
+              resultImageUrl: updated,
+            });
+          }
+        } catch (err) {
+          console.error('Interactive drape re-render error:', err);
+        } finally {
+          setIsReRendering(false);
+        }
+      }, 100);
+    },
+    [personImg, garment, lastResult, setLastResult]
+  );
+
+  // Trigger re-computation on adjustment changes
+  useEffect(() => {
+    recomputeDrape({
+      offsetY,
+      offsetX,
+      scale,
+      widthFactor,
+      rotation,
+      opacity,
+      framingPreset,
+    });
+  }, [offsetY, offsetX, scale, widthFactor, rotation, opacity, framingPreset, recomputeDrape]);
+
+  // Quick preset handlers
+  const handlePresetPortrait = () => {
+    setFramingPreset('portrait');
+    setOffsetY(0);
+    setOffsetX(0);
+    setScale(1.05);
+    setWidthFactor(1.0);
+    setRotation(0);
+    toast.success('Applied Portrait / Headshot fit preset.');
+  };
+
+  const handlePresetFullBody = () => {
+    setFramingPreset('full-body');
+    setOffsetY(0);
+    setOffsetX(0);
+    setScale(1.0);
+    setWidthFactor(1.0);
+    setRotation(0);
+    toast.success('Applied Full Standing Body preset.');
+  };
+
+  const handlePresetAutoAi = () => {
+    setFramingPreset('auto');
+    setOffsetY(0);
+    setOffsetX(0);
+    setScale(1.0);
+    setWidthFactor(1.0);
+    setRotation(0);
+    toast.success('Auto-aligned to detected body landmarks.');
+  };
+
+  const handleResetFit = () => {
+    setOffsetY(0);
+    setOffsetX(0);
+    setScale(1.0);
+    setWidthFactor(1.0);
+    setRotation(0);
+    setFramingPreset('auto');
+    toast.info('Fit adjustments reset to initial calculation.');
+  };
+
+  const handleSizeSelect = (newScale: number, label: string) => {
+    setScale(newScale);
+    toast.info(`Selected Size: ${label}`);
+  };
+
+  const handleSilhouetteSelect = (factor: number, label: string) => {
+    setWidthFactor(factor);
+    toast.info(`Selected Cut: ${label}`);
+  };
 
   const handleDownload = () => {
     const link = document.createElement('a');
     link.download = `tryon-look-${Date.now()}.png`;
-    link.href = resultImg;
+    link.href = currentResultImg;
     link.click();
-    toast.success('Try-on image downloaded to your device!');
+    toast.success('Try-on image downloaded with custom fit!');
   };
 
   const handleSaveLook = () => {
     StorageService.saveLook({
       title: `Virtual Look with ${garment.name}`,
       personImageUrl: personImg,
-      resultImageUrl: resultImg,
+      resultImageUrl: currentResultImg,
       garmentId: garment.id,
       garmentName: garment.name,
       garmentCategory: garment.category,
@@ -54,14 +176,14 @@ export const VirtualTryOnResultsPage: React.FC = () => {
       isFavorite: true,
     });
     refreshSavedLooks();
-    toast.success('Look saved to your private gallery! ❤️');
+    toast.success('Fitted look saved to your private gallery! ❤️');
   };
 
   const handleCompareOutfits = () => {
     const newLook = StorageService.saveLook({
       title: `Virtual Look with ${garment.name}`,
       personImageUrl: personImg,
-      resultImageUrl: resultImg,
+      resultImageUrl: currentResultImg,
       garmentId: garment.id,
       garmentName: garment.name,
       garmentCategory: garment.category,
@@ -88,31 +210,47 @@ export const VirtualTryOnResultsPage: React.FC = () => {
             <span>Virtual Try-On Result</span>
           </h1>
           <p className="text-xs sm:text-sm text-gray-400">
-            Drape preview anchored to body proportions via {lastResult?.modelUsed || 'High-Resolution Mesh Warp'}.
+            Drape preview anchored to body proportions. Use the <strong>Adjust Fit Studio</strong> below to fine-tune garment position and size.
           </p>
         </div>
 
         {/* View toggle */}
-        <div className="flex items-center gap-1.5 bg-gray-900/80 border border-white/10 rounded-2xl p-1 backdrop-blur-xl">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-gray-900/80 border border-white/10 rounded-2xl p-1 backdrop-blur-xl">
+            <button
+              type="button"
+              onClick={() => setViewMode('slider')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition ${
+                viewMode === 'slider' ? 'bg-violet-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              <span>Interactive Slider</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('side-by-side')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition ${
+                viewMode === 'side-by-side' ? 'bg-violet-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <Columns2 className="h-3.5 w-3.5" />
+              <span>Side by Side</span>
+            </button>
+          </div>
+
           <button
             type="button"
-            onClick={() => setViewMode('slider')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition ${
-              viewMode === 'slider' ? 'bg-violet-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
+            onClick={() => setShowFitStudio(!showFitStudio)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-2xl border transition backdrop-blur-xl ${
+              showFitStudio
+                ? 'border-violet-500/50 bg-violet-600/30 text-violet-300 shadow-lg shadow-violet-900/40'
+                : 'border-white/15 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
             }`}
           >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            <span>Interactive Slider</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('side-by-side')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition ${
-              viewMode === 'side-by-side' ? 'bg-violet-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            <Columns2 className="h-3.5 w-3.5" />
-            <span>Side by Side</span>
+            <Wand2 className="h-3.5 w-3.5 text-violet-400" />
+            <span>Adjust Fit</span>
+            {showFitStudio ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
         </div>
       </div>
@@ -120,12 +258,12 @@ export const VirtualTryOnResultsPage: React.FC = () => {
       {/* Main Comparison Stage */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Visual Comparison Area (8 cols) */}
-        <div className="lg:col-span-8 space-y-3">
+        <div className="lg:col-span-8 space-y-5">
           {viewMode === 'slider' ? (
             <div className="relative aspect-[3/4] max-h-[600px] w-full overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl select-none backdrop-blur-xl">
               {/* After (Generated result) - background layer */}
               <img
-                src={resultImg}
+                src={currentResultImg}
                 alt="After: Virtual Try-On Result"
                 className="absolute inset-0 h-full w-full object-contain"
               />
@@ -164,6 +302,13 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                 aria-label="Drag before and after try-on comparison"
               />
 
+              {/* Re-rendering indicator badge */}
+              {isReRendering && (
+                <div className="pointer-events-none absolute top-4 right-4 rounded-xl bg-violet-600/90 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md animate-pulse">
+                  Updating Drape...
+                </div>
+              )}
+
               {/* Corner Badges */}
               <div className="pointer-events-none absolute bottom-4 left-4 rounded-xl bg-black/60 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md border border-white/10">
                 Original Photo
@@ -180,12 +325,248 @@ export const VirtualTryOnResultsPage: React.FC = () => {
               </div>
               <div className="rounded-3xl border border-violet-500/40 bg-black/60 p-3 flex flex-col items-center backdrop-blur-xl">
                 <span className="text-xs text-violet-400 mb-2 font-semibold">Virtual Try-On Result</span>
-                <img src={resultImg} alt="Try-On Result" className="max-h-[480px] object-contain rounded-2xl" />
+                <img src={currentResultImg} alt="Try-On Result" className="max-h-[480px] object-contain rounded-2xl" />
               </div>
             </div>
           )}
 
-          {/* Mandatory Realistic Simulation Disclaimer */}
+          {/* Interactive Fitting Studio & Drape Controls */}
+          {showFitStudio && (
+            <div className="rounded-3xl border border-violet-500/30 bg-gray-900/80 p-5 space-y-5 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-violet-600/30 text-violet-400 border border-violet-500/40">
+                    <Wand2 className="h-4 w-4" />
+                  </div>
+                  <h3 className="text-sm font-bold text-white">Interactive Fit Studio</h3>
+                  <span className="text-[11px] text-violet-400 font-semibold bg-violet-500/10 px-2 py-0.5 rounded-full border border-violet-500/20">
+                    Live Real-Time Drape
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleResetFit}
+                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-white px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 transition"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    <span>Reset</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Framing Presets */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-300 flex items-center justify-between">
+                  <span>Photo Framing & Auto-Snap:</span>
+                  <span className="text-[11px] text-gray-400">Click if garment covers face or collar</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePresetPortrait}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border transition ${
+                      framingPreset === 'portrait'
+                        ? 'border-violet-500 bg-violet-600/30 text-white shadow-md'
+                        : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                    }`}
+                  >
+                    <UserCheck className="h-3.5 w-3.5 text-violet-400" />
+                    <span>Portrait / Bust Shot</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePresetAutoAi}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border transition ${
+                      framingPreset === 'auto'
+                        ? 'border-violet-500 bg-violet-600/30 text-white shadow-md'
+                        : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                    }`}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-violet-400" />
+                    <span>AI Landmark Snap</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePresetFullBody}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border transition ${
+                      framingPreset === 'full-body'
+                        ? 'border-violet-500 bg-violet-600/30 text-white shadow-md'
+                        : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                    }`}
+                  >
+                    <Maximize2 className="h-3.5 w-3.5 text-violet-400" />
+                    <span>Full Standing Fit</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Sliders Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                {/* Vertical Position */}
+                <div className="space-y-1.5 bg-black/30 p-3 rounded-2xl border border-white/5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-gray-300 flex items-center gap-1">
+                      <MoveVertical className="h-3.5 w-3.5 text-violet-400" />
+                      Vertical Position (Up / Down)
+                    </span>
+                    <span className="font-mono text-violet-400">{offsetY > 0 ? `+${offsetY}px` : `${offsetY}px`}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-250"
+                    max="350"
+                    step="5"
+                    value={offsetY}
+                    onChange={(e) => setOffsetY(Number(e.target.value))}
+                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                  />
+                  <div className="flex justify-between items-center text-[10px] text-gray-400 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setOffsetY((v) => Math.max(-250, v - 20))}
+                      className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-gray-300"
+                    >
+                      ▲ Move Up
+                    </button>
+                    <span>Move Down →</span>
+                    <button
+                      type="button"
+                      onClick={() => setOffsetY((v) => Math.min(350, v + 20))}
+                      className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-gray-300"
+                    >
+                      ▼ Move Down
+                    </button>
+                  </div>
+                </div>
+
+                {/* Horizontal Position */}
+                <div className="space-y-1.5 bg-black/30 p-3 rounded-2xl border border-white/5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-gray-300 flex items-center gap-1">
+                      <MoveHorizontal className="h-3.5 w-3.5 text-violet-400" />
+                      Horizontal Center (Left / Right)
+                    </span>
+                    <span className="font-mono text-violet-400">{offsetX > 0 ? `+${offsetX}px` : `${offsetX}px`}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-180"
+                    max="180"
+                    step="5"
+                    value={offsetX}
+                    onChange={(e) => setOffsetX(Number(e.target.value))}
+                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                  />
+                  <div className="flex justify-between items-center text-[10px] text-gray-400 pt-0.5">
+                    <span>← Left</span>
+                    <button
+                      type="button"
+                      onClick={() => setOffsetX(0)}
+                      className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-gray-300"
+                    >
+                      Center
+                    </button>
+                    <span>Right →</span>
+                  </div>
+                </div>
+
+                {/* Garment Scale & Size */}
+                <div className="space-y-1.5 bg-black/30 p-3 rounded-2xl border border-white/5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-gray-300 flex items-center gap-1">
+                      <Maximize2 className="h-3.5 w-3.5 text-violet-400" />
+                      Garment Size / Proportions
+                    </span>
+                    <span className="font-mono text-violet-400">{Math.round(scale * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="1.7"
+                    step="0.02"
+                    value={scale}
+                    onChange={(e) => setScale(Number(e.target.value))}
+                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                  />
+                  {/* Quick Size Tags */}
+                  <div className="flex gap-1 justify-between pt-1">
+                    {[
+                      { label: 'XS', val: 0.82 },
+                      { label: 'S', val: 0.90 },
+                      { label: 'M', val: 1.00 },
+                      { label: 'L', val: 1.12 },
+                      { label: 'XL', val: 1.25 },
+                      { label: 'XXL', val: 1.38 },
+                    ].map((sz) => (
+                      <button
+                        key={sz.label}
+                        type="button"
+                        onClick={() => handleSizeSelect(sz.val, sz.label)}
+                        className={`flex-1 py-0.5 text-[10px] font-bold rounded ${
+                          Math.abs(scale - sz.val) < 0.04
+                            ? 'bg-violet-600 text-white'
+                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                        }`}
+                      >
+                        {sz.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Silhouette & Cut */}
+                <div className="space-y-1.5 bg-black/30 p-3 rounded-2xl border border-white/5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-gray-300 flex items-center gap-1">
+                      <RotateCw className="h-3.5 w-3.5 text-violet-400" />
+                      Garment Silhouette / Fit
+                    </span>
+                    <span className="font-mono text-violet-400">
+                      {widthFactor < 0.95 ? 'Slim' : widthFactor > 1.2 ? 'Oversized' : widthFactor > 1.05 ? 'Relaxed' : 'Regular'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1 pt-1">
+                    {[
+                      { label: 'Slim', val: 0.88 },
+                      { label: 'Regular', val: 1.00 },
+                      { label: 'Relaxed', val: 1.15 },
+                      { label: 'Oversized', val: 1.30 },
+                    ].map((sil) => (
+                      <button
+                        key={sil.label}
+                        type="button"
+                        onClick={() => handleSilhouetteSelect(sil.val, sil.label)}
+                        className={`py-1 text-[10px] font-bold rounded-lg border transition ${
+                          Math.abs(widthFactor - sil.val) < 0.05
+                            ? 'border-violet-500 bg-violet-600 text-white'
+                            : 'border-white/5 bg-white/5 text-gray-400 hover:bg-white/10'
+                        }`}
+                      >
+                        {sil.label}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Rotation adjustment */}
+                  <div className="flex items-center justify-between text-[11px] pt-1">
+                    <span className="text-gray-400">Tilt Angle:</span>
+                    <input
+                      type="range"
+                      min="-20"
+                      max="20"
+                      step="1"
+                      value={rotation}
+                      onChange={(e) => setRotation(Number(e.target.value))}
+                      className="w-28 h-1 bg-white/10 rounded appearance-none accent-violet-500"
+                    />
+                    <span className="font-mono text-gray-300 w-8 text-right">{rotation}°</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Realistic Simulation Disclaimer */}
           <p className="text-[11px] text-gray-400 leading-relaxed bg-white/5 border border-white/5 rounded-2xl p-3.5 backdrop-blur-md">
             ⚠️ <strong>Virtual Try-On Preview:</strong> This visualization simulates garment placement and body drape using computer vision and geometric mesh warping. Real-world fabric stretch, drape, and texture may vary.
           </p>

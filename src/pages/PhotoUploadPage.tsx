@@ -51,6 +51,7 @@ export const PhotoUploadPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
+  const [framingPreset, setFramingPreset] = useState<'auto' | 'portrait' | 'full-body'>('auto');
 
   const validateAndLoadFile = (file: File) => {
     setError(null);
@@ -120,6 +121,7 @@ export const PhotoUploadPage: React.FC = () => {
         garmentName: garment.name,
         category: garment.category,
         modelMode: preferences.inferenceMode,
+        fitOptions: { framingPreset },
       });
 
       let status = job.status;
@@ -356,8 +358,33 @@ export const PhotoUploadPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Framing Mode Selection */}
+            <div className="space-y-1.5 pt-1">
+              <label className="text-[11px] font-semibold text-gray-300">Photo Framing Mode:</label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { id: 'auto', label: 'Auto Detect' },
+                  { id: 'portrait', label: 'Portrait / Bust' },
+                  { id: 'full-body', label: 'Full Body' },
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => setFramingPreset(mode.id as any)}
+                    className={`py-1.5 text-[11px] font-semibold rounded-xl border transition ${
+                      framingPreset === mode.id
+                        ? 'border-violet-500 bg-violet-600/30 text-white shadow-sm'
+                        : 'border-white/10 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Process Action Button */}
-            <div className="pt-2">
+            <div className="pt-1">
               {processing ? (
                 <div className="rounded-2xl border border-violet-500/30 bg-violet-950/40 p-5 text-center space-y-3 backdrop-blur-md">
                   <Spinner label={progressMsg || 'Processing Virtual Try-On...'} />

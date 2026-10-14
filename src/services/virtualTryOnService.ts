@@ -7,11 +7,12 @@
  *   - getJobStatus()
  *   - retrieveResult()
  *   - cancelJob()
+ *   - renderClientTryOn()
  *
  * Engines:
  *   1. Client-Side High-Resolution Warp Engine:
- *      Uses HTML5 Canvas to perform geometric anchor alignment, shoulder scaling,
- *      bilateral drape warp, and realistic opacity feathering directly on the photo.
+ *      Uses HTML5 Canvas and MediaPipe ImagePoseService to perform landmark-based
+ *      geometric anchor alignment, shoulder scaling, drape warp, and realistic opacity feathering.
  *   2. Cloud GenAI Adapter:
  *      Communicates with backend /api/tryon/jobs or external AI virtual try-on endpoints
  *      with polling and fallback.
@@ -19,6 +20,17 @@
 
 import type { TryOnJob, TryOnResult, ClothingCategory } from '../types';
 import { ClothingCategory as CC } from '../types';
+import { ImagePoseService } from './imagePoseService';
+
+export interface TryOnFitOptions {
+  offsetY?: number; // In pixels, e.g. -400 to +400
+  offsetX?: number; // In pixels, e.g. -300 to +300
+  scale?: number; // Overall garment scale (0.5 to 2.0, default 1.0)
+  widthFactor?: number; // Width modifier (0.7 to 1.5, default 1.0)
+  rotation?: number; // Degree adjustment (-30 to +30)
+  opacity?: number; // Layer opacity (0.5 to 1.0)
+  framingPreset?: 'auto' | 'portrait' | 'half-body' | 'full-body';
+}
 
 export interface TryOnRequest {
   personImage: string; // Data URL or Image URL
@@ -26,6 +38,7 @@ export interface TryOnRequest {
   garmentName: string;
   category?: ClothingCategory;
   modelMode?: 'client-high-res' | 'cloud-genai';
+  fitOptions?: TryOnFitOptions;
 }
 
 const activeJobs = new Map<string, TryOnJob>();
@@ -73,7 +86,6 @@ export class VirtualTryOnService {
     activeJobs.set(jobId, job);
 
     if (mode === 'cloud-genai') {
-      // Attempt backend API dispatch
       try {
         const resp = await fetch('http://localhost:8000/api/tryon/jobs', {
           method: 'POST',
@@ -96,7 +108,7 @@ export class VirtualTryOnService {
           return job;
         }
       } catch {
-        // Backend not running; execute through local client engine
+        // Backend not reachable; fallback to client engine
       }
     }
 
@@ -104,14 +116,14 @@ export class VirtualTryOnService {
     job.status = 'processing';
     job.progress = 40;
 
-    // Execute synthesis asynchronously so UI can show loading states
     setTimeout(async () => {
       try {
         job.progress = 75;
         const resultUrl = await this.renderClientTryOn(
           request.personImage,
           request.garmentImage,
-          request.category || CC.T_SHIRT
+          request.category || CC.T_SHIRT,
+          request.fitOptions
         );
         job.status = 'succeeded';
         job.progress = 100;
@@ -122,7 +134,7 @@ export class VirtualTryOnService {
         job.error = err instanceof Error ? err.message : 'Virtual try-on rendering failed.';
         job.updatedAt = Date.now();
       }
-    }, 800);
+    }, 600);
 
     return job;
   }
@@ -131,11 +143,9 @@ export class VirtualTryOnService {
    * Checks current job status.
    */
   static async getJobStatus(jobId: string): Promise<TryOnJob> {
-    // Check local job store
     const local = activeJobs.get(jobId);
     if (local) {
       if (local.modelName.includes('Cloud')) {
-        // Poll backend
         try {
           const resp = await fetch(`http://localhost:8000/api/tryon/jobs/${jobId}`);
           if (resp.ok) {
@@ -193,23 +203,24 @@ export class VirtualTryOnService {
   }
 
   /**
-   * High-Resolution Client-side try-on renderer using HTML5 Canvas.
-   * Warps, scales, centers, and composites garment onto the person image.
+   * High-Resolution Client-side try-on renderer using HTML5 Canvas & ImagePoseService.
+   * Warps, scales, centers, and composites garment onto the person image using body landmarks.
    */
-  private static async renderClientTryOn(
+  public static async renderClientTryOn(
     personDataUrl: string,
     garmentUrl: string,
-    category: ClothingCategory
+    category: ClothingCategory = CC.T_SHIRT,
+    fitOptions?: TryOnFitOptions
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       const personImg = new Image();
       personImg.crossOrigin = 'anonymous';
 
-      personImg.onload = () => {
+      personImg.onload = async () => {
         const garmentImg = new Image();
         garmentImg.crossOrigin = 'anonymous';
 
-        garmentImg.onload = () => {
+        garmentImg.onload = async () => {
           try {
             const canvas = document.createElement('canvas');
             canvas.width = personImg.naturalWidth || 800;
@@ -223,40 +234,84 @@ export class VirtualTryOnService {
             // 1. Draw original person photo base layer
             ctx.drawImage(personImg, 0, 0, canvas.width, canvas.height);
 
-            // 2. Torso geometry estimation:
-            // Upper torso generally resides around 22% - 70% of person frame
-            const personW = canvas.width;
-            const personH = canvas.height;
+            // 2. Perform anatomical body landmark analysis
+            const analysis = await ImagePoseService.analyzeImage(personImg);
 
-            let targetWidth = personW * 0.58;
-            let targetHeight = targetWidth * 1.15;
-            let targetX = (personW - targetWidth) / 2;
-            let targetY = personH * 0.26; // Chest level
+            // Garment aspect ratio
+            const garmentRatio =
+              (garmentImg.naturalHeight || 700) / (garmentImg.naturalWidth || 600);
 
-            // Category adjustments
+            // Calculate base dimensions from detected shoulders
+            let baseWidth = (analysis.shoulderDistance * canvas.width) / 0.40;
+
+            // Apply category sizing adjustments
             if (category === CC.KURTI || category === CC.DRESS) {
-              targetWidth = personW * 0.62;
-              targetHeight = targetWidth * 1.6;
-              targetY = personH * 0.24;
+              baseWidth *= 1.10;
             } else if (category === CC.JACKET) {
-              targetWidth = personW * 0.64;
-              targetHeight = targetWidth * 1.18;
-              targetY = personH * 0.25;
+              baseWidth *= 1.15;
             } else if (category === CC.TOP) {
-              targetWidth = personW * 0.52;
-              targetHeight = targetWidth * 1.0;
-              targetY = personH * 0.27;
+              baseWidth *= 0.96;
             }
 
-            // 3. Realistic compositing with subtle soft shadow & natural drape
+            let baseHeight = baseWidth * garmentRatio;
+
+            // Collar / Clavicle anchor: garment collar notch sits at ~8% from top of garment graphic
+            const collarX = analysis.shoulderMidX * canvas.width;
+            const collarY = analysis.collarY * canvas.height;
+
+            let baseX = collarX - baseWidth / 2;
+            let baseY = collarY - baseHeight * 0.08;
+            let baseAngle = analysis.rotationDeg;
+
+            // Apply framing presets if requested
+            if (fitOptions?.framingPreset === 'portrait') {
+              baseWidth = canvas.width * 0.88;
+              baseHeight = baseWidth * garmentRatio;
+              baseX = (canvas.width - baseWidth) / 2;
+              baseY = canvas.height * 0.58;
+            } else if (fitOptions?.framingPreset === 'full-body') {
+              baseWidth = canvas.width * 0.54;
+              baseHeight = baseWidth * garmentRatio;
+              baseX = (canvas.width - baseWidth) / 2;
+              baseY = canvas.height * 0.24;
+            } else if (fitOptions?.framingPreset === 'half-body') {
+              baseWidth = canvas.width * 0.70;
+              baseHeight = baseWidth * garmentRatio;
+              baseX = (canvas.width - baseWidth) / 2;
+              baseY = canvas.height * 0.40;
+            }
+
+            // 3. Apply user fit adjustments (from the interactive fitting studio)
+            const scale = fitOptions?.scale ?? 1.0;
+            const widthFactor = fitOptions?.widthFactor ?? 1.0;
+            const offsetX = fitOptions?.offsetX ?? 0;
+            const offsetY = fitOptions?.offsetY ?? 0;
+            const rotation = baseAngle + (fitOptions?.rotation ?? 0);
+            const opacity = fitOptions?.opacity ?? 0.98;
+
+            const targetWidth = baseWidth * scale * widthFactor;
+            const targetHeight = baseHeight * scale;
+            const targetX = baseX + offsetX + (baseWidth - targetWidth) / 2;
+            const targetY = baseY + offsetY;
+
+            // 4. Realistic compositing with rotation & shadow
             ctx.save();
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.28)';
-            ctx.shadowBlur = 14;
-            ctx.shadowOffsetY = 6;
+            if (Math.abs(rotation) > 0.05) {
+              const cx = targetX + targetWidth / 2;
+              const cy = targetY + targetHeight / 2;
+              ctx.translate(cx, cy);
+              ctx.rotate((rotation * Math.PI) / 180);
+              ctx.translate(-cx, -cy);
+            }
+
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.32)';
+            ctx.shadowBlur = 18;
+            ctx.shadowOffsetY = 8;
+            ctx.globalAlpha = opacity;
             ctx.drawImage(garmentImg, targetX, targetY, targetWidth, targetHeight);
             ctx.restore();
 
-            // 4. Subtle lighting blend to integrate garment with photo atmosphere
+            // 5. Subtle ambient lighting blend to match photographic tone
             ctx.save();
             ctx.globalCompositeOperation = 'soft-light';
             ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
