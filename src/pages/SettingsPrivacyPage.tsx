@@ -1,4 +1,17 @@
 import React, { useState } from 'react';
+import {
+  Settings,
+  Sliders,
+  Cpu,
+  Layers,
+  ShieldCheck,
+  RefreshCw,
+  Trash2,
+  Activity,
+  CheckCircle2,
+  XCircle,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
 import { StorageService } from '../services/storageService';
 
@@ -12,7 +25,6 @@ export const SettingsPrivacyPage: React.FC = () => {
   const [mode, setMode] = useState(preferences.inferenceMode);
   const [apiUrl, setApiUrl] = useState(preferences.cloudVtonApiUrl || '');
   const [storagePref, setStoragePref] = useState(preferences.storagePreference);
-  const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Diagnostics check state
   const [diagResult, setDiagResult] = useState<{
@@ -33,8 +45,7 @@ export const SettingsPrivacyPage: React.FC = () => {
       cloudVtonApiUrl: apiUrl,
       storagePreference: storagePref,
     });
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    toast.success('Settings and preferences saved successfully!');
   };
 
   const runDiagnostics = () => {
@@ -56,19 +67,22 @@ export const SettingsPrivacyPage: React.FC = () => {
       wasm: wasmSupported,
       tested: true,
     });
+    toast.success('Hardware diagnostics scan completed.');
   };
 
   const handleClearCache = () => {
     sessionStorage.clear();
-    alert('Temporary cache cleared successfully.');
+    toast.info('Temporary session cache cleared.');
   };
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-2">
-          <span>⚙️</span>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-600/20 text-violet-400 border border-violet-500/30">
+            <Settings className="h-4 w-4" />
+          </div>
           <span>Settings & Privacy Controls</span>
         </h1>
         <p className="text-xs sm:text-sm text-gray-400 mt-1">
@@ -76,18 +90,15 @@ export const SettingsPrivacyPage: React.FC = () => {
         </p>
       </div>
 
-      {savedSuccess && (
-        <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/40 p-4 text-xs font-semibold text-emerald-300">
-          ✓ Settings saved and applied across all modules.
-        </div>
-      )}
-
       <form onSubmit={handleSave} className="space-y-6">
         {/* Camera Preferences */}
-        <div className="rounded-3xl border border-white/10 bg-gray-900/70 p-6 space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-gray-300">
-            📹 Camera & Real-Time Tracking
-          </h2>
+        <div className="rounded-3xl border border-white/10 bg-gray-900/70 p-6 space-y-4 backdrop-blur-xl shadow-2xl">
+          <div className="flex items-center gap-2">
+            <Sliders className="h-4 w-4 text-violet-400" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-300">
+              Camera & Real-Time Tracking
+            </h2>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -95,7 +106,7 @@ export const SettingsPrivacyPage: React.FC = () => {
               <select
                 value={res}
                 onChange={(e) => setRes(e.target.value as '720p' | '1080p')}
-                className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-xs text-white focus:border-violet-500 focus:outline-none"
+                className="w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2.5 text-xs text-white focus:border-violet-500 focus:outline-none transition"
               >
                 <option value="720p">720p HD (1280x720) - Optimal 30-60 FPS</option>
                 <option value="1080p">1080p Full HD (1920x1080) - High Quality</option>
@@ -154,13 +165,16 @@ export const SettingsPrivacyPage: React.FC = () => {
         </div>
 
         {/* AI & Computer Vision Inference Engines */}
-        <div className="rounded-3xl border border-white/10 bg-gray-900/70 p-6 space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-gray-300">
-            🧠 Virtual Try-On Inference Engine
-          </h2>
+        <div className="rounded-3xl border border-white/10 bg-gray-900/70 p-6 space-y-4 backdrop-blur-xl shadow-2xl">
+          <div className="flex items-center gap-2">
+            <Cpu className="h-4 w-4 text-violet-400" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-300">
+              Virtual Try-On Inference Engine
+            </h2>
+          </div>
 
           <div className="space-y-3">
-            <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/40 p-4 cursor-pointer hover:border-violet-500/40">
+            <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/40 p-4 cursor-pointer hover:border-violet-500/40 transition">
               <input
                 type="radio"
                 name="engine"
@@ -176,7 +190,7 @@ export const SettingsPrivacyPage: React.FC = () => {
               </div>
             </label>
 
-            <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/40 p-4 cursor-pointer hover:border-violet-500/40">
+            <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/40 p-4 cursor-pointer hover:border-violet-500/40 transition">
               <input
                 type="radio"
                 name="engine"
@@ -201,86 +215,97 @@ export const SettingsPrivacyPage: React.FC = () => {
                 value={apiUrl}
                 onChange={(e) => setApiUrl(e.target.value)}
                 placeholder="http://localhost:8000/api/tryon/jobs or https://your-vton-api..."
-                className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-xs text-white focus:border-violet-500 focus:outline-none"
+                className="w-full rounded-2xl border border-white/10 bg-black/50 px-4 py-2.5 text-xs text-white focus:border-violet-500 focus:outline-none transition"
               />
             </div>
           )}
         </div>
 
         {/* Storage & Privacy Policies */}
-        <div className="rounded-3xl border border-white/10 bg-gray-900/70 p-6 space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-gray-300">
-            🔒 Local Storage & Cache Controls
-          </h2>
+        <div className="rounded-3xl border border-white/10 bg-gray-900/70 p-6 space-y-4 backdrop-blur-xl shadow-2xl">
+          <div className="flex items-center gap-2">
+            <Layers className="h-4 w-4 text-violet-400" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-300">
+              Local Storage & Cache Controls
+            </h2>
+          </div>
 
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
               onClick={handleClearCache}
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-gray-300 hover:bg-white/10 transition"
+              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-gray-300 hover:bg-white/10 transition backdrop-blur-md"
             >
-              Clear Temporary Cache
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span>Clear Temporary Cache</span>
             </button>
             <button
               type="button"
               onClick={() => {
                 if (window.confirm('Delete all saved try-on looks?')) {
                   StorageService.getSavedLooks().forEach((l) => StorageService.deleteLook(l.id));
-                  alert('Saved looks cleared.');
+                  toast.success('Saved looks cleared.');
                 }
               }}
-              className="rounded-xl border border-red-500/30 bg-red-950/20 px-4 py-2 text-xs font-semibold text-red-400 hover:bg-red-950/40 transition"
+              className="flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-950/20 px-4 py-2 text-xs font-semibold text-red-400 hover:bg-red-950/40 transition"
             >
-              Clear Saved Images
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Clear Saved Images</span>
             </button>
           </div>
         </div>
 
         {/* Diagnostics & Model Version */}
-        <div className="rounded-3xl border border-white/10 bg-gray-900/70 p-6 space-y-4">
+        <div className="rounded-3xl border border-white/10 bg-gray-900/70 p-6 space-y-4 backdrop-blur-xl shadow-2xl">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-300">
-              🛠️ System Diagnostics & Model Specs
-            </h2>
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-violet-400" />
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-300">
+                System Diagnostics & Model Specs
+              </h2>
+            </div>
             <button
               type="button"
               onClick={runDiagnostics}
-              className="rounded-lg bg-white/10 px-3 py-1 text-xs font-semibold text-white hover:bg-white/20 transition"
+              className="rounded-xl bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-white/20 transition backdrop-blur-md"
             >
               Run Hardware Check
             </button>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="rounded-xl border border-white/5 bg-black/40 p-3">
+            <div className="rounded-2xl border border-white/5 bg-black/40 p-3.5">
               <span className="text-gray-400 block text-[10px]">Pose Model</span>
               <span className="font-semibold text-white">MediaPipe BlazePose 33</span>
             </div>
-            <div className="rounded-xl border border-white/5 bg-black/40 p-3">
+            <div className="rounded-2xl border border-white/5 bg-black/40 p-3.5">
               <span className="text-gray-400 block text-[10px]">WASM Runtime</span>
-              <span className="font-semibold text-white">SIMD + No-SIMD Fallback</span>
+              <span className="font-semibold text-white">SIMD + Fallback</span>
             </div>
-            <div className="rounded-xl border border-white/5 bg-black/40 p-3">
+            <div className="rounded-2xl border border-white/5 bg-black/40 p-3.5">
               <span className="text-gray-400 block text-[10px]">Hardware Delegate</span>
               <span className="font-semibold text-white">WebGL GPU Accelerated</span>
             </div>
-            <div className="rounded-xl border border-white/5 bg-black/40 p-3">
+            <div className="rounded-2xl border border-white/5 bg-black/40 p-3.5">
               <span className="text-gray-400 block text-[10px]">App Version</span>
               <span className="font-semibold text-white">v1.0.0 Production</span>
             </div>
           </div>
 
           {diagResult.tested && (
-            <div className="rounded-2xl border border-violet-500/30 bg-violet-950/30 p-4 text-xs space-y-1">
-              <p className="font-bold text-white">Hardware Diagnostic Results:</p>
+            <div className="rounded-2xl border border-violet-500/30 bg-violet-950/30 p-4 text-xs space-y-1.5 backdrop-blur-md">
+              <p className="font-bold text-white flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Hardware Diagnostic Results:</span>
+              </p>
               <p className={diagResult.webgl ? 'text-emerald-400' : 'text-red-400'}>
-                • WebGL GPU Pipeline: {diagResult.webgl ? '✓ Supported & Active' : '✕ Not Available'}
+                • WebGL GPU Pipeline: {diagResult.webgl ? 'Supported & Active' : 'Not Available'}
               </p>
               <p className={diagResult.worker ? 'text-emerald-400' : 'text-red-400'}>
-                • Background Web Workers: {diagResult.worker ? '✓ Supported' : '✕ Not Available'}
+                • Background Web Workers: {diagResult.worker ? 'Supported' : 'Not Available'}
               </p>
               <p className={diagResult.wasm ? 'text-emerald-400' : 'text-red-400'}>
-                • WebAssembly Core: {diagResult.wasm ? '✓ Supported' : '✕ Not Available'}
+                • WebAssembly Core: {diagResult.wasm ? 'Supported' : 'Not Available'}
               </p>
             </div>
           )}
@@ -289,7 +314,7 @@ export const SettingsPrivacyPage: React.FC = () => {
         {/* Save Form button */}
         <button
           type="submit"
-          className="rounded-2xl bg-violet-600 px-6 py-3.5 text-xs sm:text-sm font-bold text-white shadow-lg shadow-violet-600/30 hover:bg-violet-500 transition"
+          className="rounded-2xl bg-violet-600 px-7 py-3.5 text-xs sm:text-sm font-bold text-white shadow-lg shadow-violet-600/30 hover:bg-violet-500 transition"
         >
           Save All Preferences
         </button>

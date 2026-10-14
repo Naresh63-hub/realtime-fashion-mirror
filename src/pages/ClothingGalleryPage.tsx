@@ -1,4 +1,14 @@
 import React, { useState, useMemo } from 'react';
+import {
+  Search,
+  Heart,
+  Camera,
+  Sparkles,
+  ShoppingBag,
+  Eye,
+  Filter,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
 import { FULL_PRODUCT_CATALOG } from '../services/garmentCatalog';
 import { ClothingCategory, type Product } from '../types';
@@ -33,12 +43,23 @@ export const ClothingGalleryPage: React.FC = () => {
 
   const handleSelectForTryOn = (product: Product) => {
     setSelectedGarment(product);
+    toast.success(`Selected ${product.name} for Live Try-On`);
     navigate('live');
   };
 
   const handleSelectForPhotoTryOn = (product: Product) => {
     setSelectedGarment(product);
+    toast.success(`Selected ${product.name} for Photo Try-On`);
     navigate('photo-upload');
+  };
+
+  const handleToggleFav = (product: Product) => {
+    const isNowFav = toggleFavorite(product.id);
+    if (isNowFav) {
+      toast.success(`Added ${product.name} to favorites ❤️`);
+    } else {
+      toast.info(`Removed ${product.name} from favorites`);
+    }
   };
 
   return (
@@ -46,29 +67,32 @@ export const ClothingGalleryPage: React.FC = () => {
       {/* Header and Search */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-2">
-            <span>👗</span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30">
+              <ShoppingBag className="h-4 w-4" />
+            </div>
             <span>Clothing Catalog & Gallery</span>
           </h1>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-xs sm:text-sm text-gray-400 mt-1">
             Browse authentic garments ready for real-time body tracking or personal photograph try-on.
           </p>
         </div>
 
         {/* Search Input */}
-        <div className="w-full md:w-72">
+        <div className="relative w-full md:w-80">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
           <input
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by name, brand, or style..."
-            className="w-full rounded-xl border border-white/10 bg-gray-900/80 px-4 py-2 text-xs text-white placeholder-gray-500 focus:border-violet-500 focus:outline-none"
+            className="w-full rounded-2xl border border-white/10 bg-gray-900/80 pl-10 pr-4 py-2.5 text-xs text-white placeholder-gray-500 focus:border-violet-500 focus:outline-none backdrop-blur-xl transition"
           />
         </div>
       </div>
 
       {/* Category Filter Pills */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+      <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
         {categories.map((cat) => {
           const isActive = activeCategory === cat.id;
           return (
@@ -76,10 +100,10 @@ export const ClothingGalleryPage: React.FC = () => {
               key={cat.id}
               type="button"
               onClick={() => setActiveCategory(cat.id as ClothingCategory | 'all')}
-              className={`rounded-xl px-4 py-2 text-xs font-semibold whitespace-nowrap transition ${
+              className={`rounded-2xl px-4 py-2 text-xs font-semibold whitespace-nowrap transition duration-200 ${
                 isActive
-                  ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30'
-                  : 'border border-white/10 bg-gray-900/60 text-gray-300 hover:bg-white/5 hover:text-white'
+                  ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30 scale-[1.02]'
+                  : 'border border-white/10 bg-gray-900/60 text-gray-300 hover:bg-white/10 hover:text-white backdrop-blur-md'
               }`}
             >
               {cat.label}
@@ -90,8 +114,8 @@ export const ClothingGalleryPage: React.FC = () => {
 
       {/* Product Grid */}
       {filteredProducts.length === 0 ? (
-        <div className="rounded-3xl border border-white/10 bg-gray-900/40 p-12 text-center">
-          <p className="text-3xl mb-2">🔍</p>
+        <div className="rounded-3xl border border-white/10 bg-gray-900/40 p-12 text-center backdrop-blur-xl">
+          <Search className="h-10 w-10 text-gray-500 mx-auto mb-3" />
           <h3 className="text-base font-bold text-white">No products found</h3>
           <p className="text-xs text-gray-400 mt-1">Try clearing your search query or selecting another category.</p>
           <button
@@ -100,7 +124,7 @@ export const ClothingGalleryPage: React.FC = () => {
               setSearchQuery('');
               setActiveCategory('all');
             }}
-            className="mt-4 rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold text-gray-200 hover:bg-white/20 transition"
+            className="mt-4 rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold text-gray-200 hover:bg-white/20 transition backdrop-blur-md"
           >
             Reset Filters
           </button>
@@ -112,7 +136,7 @@ export const ClothingGalleryPage: React.FC = () => {
             return (
               <div
                 key={product.id}
-                className="group rounded-3xl border border-white/10 bg-gray-900/70 p-4 flex flex-col justify-between hover:border-violet-500/50 hover:bg-gray-900/90 transition shadow-lg"
+                className="group rounded-3xl border border-white/10 bg-gray-900/70 p-4 flex flex-col justify-between hover:border-violet-500/50 hover:bg-gray-900/90 transition shadow-xl backdrop-blur-xl duration-300"
               >
                 <div>
                   {/* Card Visual & Favorite Button */}
@@ -128,13 +152,13 @@ export const ClothingGalleryPage: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => toggleFavorite(product.id)}
+                      onClick={() => handleToggleFav(product)}
                       title={isFav ? 'Remove from favorites' : 'Add to favorites'}
                       className={`absolute top-2.5 right-2.5 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur-md transition ${
-                        isFav ? 'bg-red-500/80 text-white' : 'bg-black/40 text-gray-300 hover:bg-black/70'
+                        isFav ? 'bg-red-500/80 text-white shadow-md shadow-red-900/50' : 'bg-black/40 text-gray-300 hover:bg-black/70'
                       }`}
                     >
-                      {isFav ? '❤️' : '🤍'}
+                      <Heart className={`h-4 w-4 ${isFav ? 'fill-current' : ''}`} />
                     </button>
                   </div>
 
@@ -174,16 +198,18 @@ export const ClothingGalleryPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleSelectForTryOn(product)}
-                      className="flex-1 rounded-xl bg-violet-600 py-2 text-xs font-semibold text-white hover:bg-violet-500 transition shadow-md shadow-violet-600/20"
+                      className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-violet-600 py-2 text-xs font-semibold text-white hover:bg-violet-500 transition shadow-md shadow-violet-600/20"
                     >
-                      📹 Live Camera
+                      <Camera className="h-3.5 w-3.5" />
+                      <span>Live Camera</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleSelectForPhotoTryOn(product)}
-                      className="flex-1 rounded-xl bg-purple-600/80 py-2 text-xs font-semibold text-white hover:bg-purple-600 transition"
+                      className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-purple-600/80 py-2 text-xs font-semibold text-white hover:bg-purple-600 transition"
                     >
-                      ✨ Photo Try-On
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>Photo Try-On</span>
                     </button>
                   </div>
                   <button
@@ -192,9 +218,10 @@ export const ClothingGalleryPage: React.FC = () => {
                       setSelectedGarment(product);
                       navigate('product-details', { productId: product.id });
                     }}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 py-1.5 text-xs font-medium text-gray-300 hover:bg-white/10 transition"
+                    className="flex items-center justify-center gap-1.5 w-full rounded-xl border border-white/10 bg-white/5 py-1.5 text-xs font-medium text-gray-300 hover:bg-white/10 transition backdrop-blur-md"
                   >
-                    View Product Details →
+                    <Eye className="h-3.5 w-3.5" />
+                    <span>View Product Details →</span>
                   </button>
                 </div>
               </div>

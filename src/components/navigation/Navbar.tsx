@@ -1,19 +1,31 @@
 import React from 'react';
+import {
+  Home,
+  Camera,
+  Sparkles,
+  Link2,
+  ShoppingBag,
+  Heart,
+  Scale,
+  Settings,
+  User,
+  Globe,
+} from 'lucide-react';
 import { useApp, type AppRoute } from '../../context/AppContext';
 import { useTranslation, type Locale } from '../../i18n';
 
 export const Navbar: React.FC = () => {
-  const { route, navigate, savedLooks, favoriteIds } = useApp();
-  const { t, locale, setLocale } = useTranslation();
+  const { route, navigate, savedLooks } = useApp();
+  const { locale, setLocale } = useTranslation();
 
-  const navLinks: Array<{ id: AppRoute; label: string; icon: string }> = [
-    { id: 'home', label: 'Dashboard', icon: '🏠' },
-    { id: 'live', label: 'Live Camera', icon: '📹' },
-    { id: 'photo-upload', label: 'Photo Try-On', icon: '✨' },
-    { id: 'product-url', label: 'Import Link', icon: '🔗' },
-    { id: 'gallery', label: 'Garments', icon: '👗' },
-    { id: 'saved', label: `Saved (${savedLooks.length})`, icon: '❤️' },
-    { id: 'compare', label: 'Compare', icon: '⚖️' },
+  const navLinks: Array<{ id: AppRoute; label: string; icon: React.ReactNode; badge?: number }> = [
+    { id: 'home', label: 'Dashboard', icon: <Home className="h-4 w-4" /> },
+    { id: 'live', label: 'Live Camera', icon: <Camera className="h-4 w-4" /> },
+    { id: 'photo-upload', label: 'Photo Try-On', icon: <Sparkles className="h-4 w-4" /> },
+    { id: 'product-url', label: 'Import Link', icon: <Link2 className="h-4 w-4" /> },
+    { id: 'gallery', label: 'Garments', icon: <ShoppingBag className="h-4 w-4" /> },
+    { id: 'saved', label: 'Saved', icon: <Heart className="h-4 w-4" />, badge: savedLooks.length },
+    { id: 'compare', label: 'Compare', icon: <Scale className="h-4 w-4" /> },
   ];
 
   const toggleLanguage = () => {
@@ -22,20 +34,20 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-gray-950/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-gray-950/70 backdrop-blur-2xl shadow-lg shadow-black/40">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         {/* Brand / Logo */}
         <button
           type="button"
           onClick={() => navigate('home')}
-          className="flex items-center gap-2.5 text-left transition hover:opacity-90 outline-none"
+          className="flex items-center gap-3 text-left transition hover:opacity-90 outline-none group"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 via-purple-600 to-fuchsia-500 shadow-md shadow-violet-900/40">
-            <span className="text-xl">🪞</span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-violet-600 via-purple-600 to-fuchsia-500 shadow-md shadow-violet-900/50 group-hover:scale-105 transition-transform duration-300">
+            <Sparkles className="h-5 w-5 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold tracking-tight text-white text-base">AI Fashion Mirror</span>
+              <span className="font-extrabold tracking-tight text-white text-base">AI Fashion Mirror</span>
               <span className="rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-semibold text-violet-300 border border-violet-500/30">
                 PROD
               </span>
@@ -45,7 +57,7 @@ export const Navbar: React.FC = () => {
         </button>
 
         {/* Desktop Nav Links */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden lg:flex items-center gap-1.5">
           {navLinks.map((item) => {
             const isActive = route === item.id;
             return (
@@ -53,14 +65,19 @@ export const Navbar: React.FC = () => {
                 key={item.id}
                 type="button"
                 onClick={() => navigate(item.id)}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
                   isActive
-                    ? 'bg-violet-600/20 text-violet-300 border border-violet-500/40'
-                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                    ? 'bg-violet-600/25 text-violet-300 border border-violet-500/40 shadow-sm shadow-violet-600/20'
+                    : 'text-gray-300 hover:bg-white/5 hover:text-white border border-transparent'
                 }`}
               >
-                <span>{item.icon}</span>
+                {item.icon}
                 <span>{item.label}</span>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span className="ml-0.5 rounded-full bg-violet-500/30 px-1.5 py-0.2 text-[10px] text-violet-200">
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -73,9 +90,10 @@ export const Navbar: React.FC = () => {
             type="button"
             onClick={toggleLanguage}
             title="Toggle Language"
-            className="rounded-lg bg-white/5 px-2.5 py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/10 border border-white/10 transition"
+            className="flex items-center gap-1.5 rounded-xl bg-white/5 px-2.5 py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/10 border border-white/10 transition backdrop-blur-md"
           >
-            {locale === 'en' ? '🌐 HI' : '🌐 EN'}
+            <Globe className="h-3.5 w-3.5 text-violet-400" />
+            <span>{locale === 'en' ? 'HI' : 'EN'}</span>
           </button>
 
           {/* Settings */}
@@ -84,13 +102,13 @@ export const Navbar: React.FC = () => {
             onClick={() => navigate('settings')}
             title="Settings & Privacy"
             aria-label="Settings and Privacy"
-            className={`rounded-lg p-2 text-sm transition border ${
+            className={`rounded-xl p-2 text-sm transition border backdrop-blur-md ${
               route === 'settings'
-                ? 'bg-violet-600/20 text-violet-300 border-violet-500/40'
+                ? 'bg-violet-600/25 text-violet-300 border-violet-500/40'
                 : 'text-gray-300 bg-white/5 border-white/10 hover:bg-white/10'
             }`}
           >
-            ⚙️
+            <Settings className="h-4 w-4" />
           </button>
 
           {/* Profile */}
@@ -99,14 +117,14 @@ export const Navbar: React.FC = () => {
             onClick={() => navigate('profile')}
             title="User Profile"
             aria-label="User Profile"
-            className={`flex items-center gap-1.5 rounded-lg p-1.5 transition border ${
+            className={`flex items-center gap-1.5 rounded-xl p-1.5 transition border backdrop-blur-md ${
               route === 'profile'
-                ? 'bg-violet-600/20 text-violet-300 border-violet-500/40'
+                ? 'bg-violet-600/25 text-violet-300 border-violet-500/40'
                 : 'text-gray-300 bg-white/5 border-white/10 hover:bg-white/10'
             }`}
           >
-            <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs text-white font-bold">
-              U
+            <div className="h-6 w-6 rounded-lg bg-gradient-to-tr from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs text-white font-bold">
+              <User className="h-3.5 w-3.5" />
             </div>
           </button>
         </div>

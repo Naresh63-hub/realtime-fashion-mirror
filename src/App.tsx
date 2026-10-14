@@ -1,4 +1,5 @@
 import React from 'react';
+import { Toaster } from 'sonner';
 import { TranslationProvider } from './i18n';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/navigation/Navbar';
@@ -55,10 +56,29 @@ const PageRenderer: React.FC = () => {
 const MainLayout: React.FC = () => {
   return (
     <div className="flex min-h-screen flex-col bg-gray-950 text-gray-100 selection:bg-violet-600 selection:text-white">
+      {/* Toast Notifications */}
+      <Toaster
+        position="top-right"
+        richColors
+        theme="dark"
+        closeButton
+        toastOptions={{
+          style: {
+            background: 'rgba(17, 24, 39, 0.85)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            color: '#fff',
+          },
+        }}
+      />
+
       <Navbar />
-      <main className="flex-1">
+
+      {/* Main content with mobile bottom safe area padding */}
+      <main className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
         <PageRenderer />
       </main>
+
       <Footer />
       <MobileNav />
     </div>

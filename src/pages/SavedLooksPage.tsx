@@ -1,4 +1,15 @@
 import React, { useState } from 'react';
+import {
+  Heart,
+  Download,
+  Trash2,
+  Maximize2,
+  Sparkles,
+  Camera,
+  Scale,
+  X,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
 import { StorageService } from '../services/storageService';
 import type { SavedLook } from '../types';
@@ -14,12 +25,18 @@ export const SavedLooksPage: React.FC = () => {
   const handleDelete = (id: string) => {
     StorageService.deleteLook(id);
     refreshSavedLooks();
+    toast.success('Look deleted successfully.');
     if (inspectLook?.id === id) setInspectLook(null);
   };
 
   const handleToggleFav = (id: string) => {
-    StorageService.toggleFavoriteLook(id);
+    const isFav = StorageService.toggleFavoriteLook(id);
     refreshSavedLooks();
+    if (isFav) {
+      toast.success('Added to favorites ❤️');
+    } else {
+      toast.info('Removed from favorites');
+    }
     if (inspectLook?.id === id) {
       setInspectLook((prev) => (prev ? { ...prev, isFavorite: !prev.isFavorite } : null));
     }
@@ -30,12 +47,14 @@ export const SavedLooksPage: React.FC = () => {
     a.download = `${look.garmentName.replace(/\s+/g, '-').toLowerCase()}-${look.id}.png`;
     a.href = look.resultImageUrl;
     a.click();
+    toast.success('Look downloaded to your device!');
   };
 
   const handleClearAll = () => {
     if (window.confirm('Are you sure you want to delete all saved looks? This cannot be undone.')) {
       savedLooks.forEach((l) => StorageService.deleteLook(l.id));
       refreshSavedLooks();
+      toast.info('All saved looks cleared.');
     }
   };
 
@@ -44,8 +63,10 @@ export const SavedLooksPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-2">
-            <span>❤️</span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-red-600/20 text-red-400 border border-red-500/30">
+              <Heart className="h-4 w-4 fill-current" />
+            </div>
             <span>Saved Looks Gallery</span>
           </h1>
           <p className="text-xs sm:text-sm text-gray-400 mt-1">
@@ -58,9 +79,10 @@ export const SavedLooksPage: React.FC = () => {
             <button
               type="button"
               onClick={handleClearAll}
-              className="rounded-xl border border-red-500/30 bg-red-950/20 px-3.5 py-2 text-xs font-semibold text-red-400 hover:bg-red-950/40 transition"
+              className="flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-950/20 px-3.5 py-2 text-xs font-semibold text-red-400 hover:bg-red-950/40 transition backdrop-blur-md"
             >
-              Clear All Saved Looks
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Clear All Saved Looks</span>
             </button>
           </div>
         )}
@@ -71,10 +93,10 @@ export const SavedLooksPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('all')}
-          className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
+          className={`rounded-2xl px-4 py-2 text-xs font-semibold transition duration-200 ${
             activeTab === 'all'
-              ? 'bg-violet-600 text-white shadow-md'
-              : 'border border-white/10 bg-gray-900/60 text-gray-400 hover:text-white'
+              ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30'
+              : 'border border-white/10 bg-gray-900/60 text-gray-400 hover:text-white backdrop-blur-md'
           }`}
         >
           All Looks ({savedLooks.length})
@@ -82,10 +104,10 @@ export const SavedLooksPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('favorites')}
-          className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
+          className={`rounded-2xl px-4 py-2 text-xs font-semibold transition duration-200 ${
             activeTab === 'favorites'
-              ? 'bg-violet-600 text-white shadow-md'
-              : 'border border-white/10 bg-gray-900/60 text-gray-400 hover:text-white'
+              ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30'
+              : 'border border-white/10 bg-gray-900/60 text-gray-400 hover:text-white backdrop-blur-md'
           }`}
         >
           Favorites Only ({savedLooks.filter((l) => l.isFavorite).length})
@@ -94,8 +116,8 @@ export const SavedLooksPage: React.FC = () => {
 
       {/* Grid or Empty State */}
       {displayedLooks.length === 0 ? (
-        <div className="rounded-3xl border border-white/10 bg-gray-900/40 p-12 text-center space-y-4">
-          <p className="text-4xl">📸</p>
+        <div className="rounded-3xl border border-white/10 bg-gray-900/40 p-12 text-center space-y-4 backdrop-blur-xl">
+          <Heart className="h-12 w-12 text-gray-500 mx-auto" />
           <h3 className="text-base font-bold text-white">No Saved Looks Found</h3>
           <p className="text-xs text-gray-400 max-w-sm mx-auto">
             {activeTab === 'favorites'
@@ -106,16 +128,18 @@ export const SavedLooksPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('live')}
-              className="rounded-xl bg-violet-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-violet-500 transition"
+              className="flex items-center gap-1.5 rounded-xl bg-violet-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-violet-500 transition shadow-lg shadow-violet-600/30"
             >
-              📹 Try Live Camera
+              <Camera className="h-4 w-4" />
+              <span>Try Live Camera</span>
             </button>
             <button
               type="button"
               onClick={() => navigate('photo-upload')}
-              className="rounded-xl border border-white/10 bg-white/10 px-5 py-2.5 text-xs font-semibold text-gray-200 hover:bg-white/20 transition"
+              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-5 py-2.5 text-xs font-semibold text-gray-200 hover:bg-white/20 transition backdrop-blur-md"
             >
-              ✨ Upload Photo
+              <Sparkles className="h-4 w-4" />
+              <span>Upload Photo</span>
             </button>
           </div>
         </div>
@@ -124,12 +148,12 @@ export const SavedLooksPage: React.FC = () => {
           {displayedLooks.map((look) => (
             <div
               key={look.id}
-              className="group rounded-3xl border border-white/10 bg-gray-900/70 p-4 flex flex-col justify-between hover:border-violet-500/40 transition shadow-lg"
+              className="group rounded-3xl border border-white/10 bg-gray-900/70 p-4 flex flex-col justify-between hover:border-violet-500/40 transition shadow-2xl backdrop-blur-xl duration-300"
             >
               <div>
                 <div
                   onClick={() => setInspectLook(look)}
-                  className="relative aspect-[3/4] cursor-pointer overflow-hidden rounded-2xl bg-black mb-3"
+                  className="relative aspect-[3/4] cursor-pointer overflow-hidden rounded-2xl bg-black mb-3 border border-white/5"
                 >
                   <img
                     src={look.resultImageUrl}
@@ -144,10 +168,10 @@ export const SavedLooksPage: React.FC = () => {
                       handleToggleFav(look.id);
                     }}
                     className={`absolute top-2.5 right-2.5 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur-md transition ${
-                      look.isFavorite ? 'bg-red-500/90 text-white' : 'bg-black/40 text-gray-300 hover:bg-black/70'
+                      look.isFavorite ? 'bg-red-500/90 text-white shadow-md shadow-red-900/50' : 'bg-black/40 text-gray-300 hover:bg-black/70'
                     }`}
                   >
-                    {look.isFavorite ? '❤️' : '🤍'}
+                    <Heart className={`h-4 w-4 ${look.isFavorite ? 'fill-current' : ''}`} />
                   </button>
                 </div>
 
@@ -163,17 +187,18 @@ export const SavedLooksPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setInspectLook(look)}
-                  className="flex-1 rounded-xl bg-white/10 py-1.5 text-xs font-semibold text-gray-200 hover:bg-white/20 transition"
+                  className="flex-1 flex items-center justify-center gap-1 rounded-xl bg-white/10 py-1.5 text-xs font-semibold text-gray-200 hover:bg-white/20 transition backdrop-blur-md"
                 >
-                  Inspect
+                  <Maximize2 className="h-3 w-3" />
+                  <span>Inspect</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleDownload(look)}
-                  className="rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-gray-300 hover:bg-white/10 transition"
+                  className="rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-gray-300 hover:bg-white/10 transition backdrop-blur-md"
                   title="Download Image"
                 >
-                  📥
+                  <Download className="h-3.5 w-3.5" />
                 </button>
                 <button
                   type="button"
@@ -181,7 +206,7 @@ export const SavedLooksPage: React.FC = () => {
                   className="rounded-xl border border-red-500/20 bg-red-950/20 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-950/40 transition"
                   title="Delete Look"
                 >
-                  🗑️
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
@@ -192,11 +217,11 @@ export const SavedLooksPage: React.FC = () => {
       {/* Inspect Modal */}
       {inspectLook && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-xl"
           onClick={() => setInspectLook(null)}
         >
           <div
-            className="flex max-w-xl w-full flex-col gap-4 rounded-3xl border border-white/10 bg-gray-900 p-6 shadow-2xl"
+            className="flex max-w-xl w-full flex-col gap-4 rounded-3xl border border-white/10 bg-gray-900/90 p-6 shadow-2xl backdrop-blur-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -209,7 +234,7 @@ export const SavedLooksPage: React.FC = () => {
                 onClick={() => setInspectLook(null)}
                 className="text-gray-400 hover:text-white"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
 
@@ -221,9 +246,10 @@ export const SavedLooksPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleToggleFav(inspectLook.id)}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-gray-200 hover:bg-white/10 transition"
+                className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
               >
-                {inspectLook.isFavorite ? '❤️ Unfavorite' : '🤍 Add to Favorites'}
+                <Heart className={`h-3.5 w-3.5 ${inspectLook.isFavorite ? 'fill-current text-red-500' : ''}`} />
+                <span>{inspectLook.isFavorite ? 'Unfavorite' : 'Add to Favorites'}</span>
               </button>
 
               <div className="flex gap-2">
@@ -231,18 +257,21 @@ export const SavedLooksPage: React.FC = () => {
                   type="button"
                   onClick={() => {
                     StorageService.toggleCompareLook(inspectLook.id);
+                    toast.success('Added to outfit comparison!');
                     navigate('compare');
                   }}
-                  className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-500 transition"
+                  className="flex items-center gap-1.5 rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-500 transition shadow-md shadow-violet-600/30"
                 >
-                  Compare Look ➔
+                  <Scale className="h-3.5 w-3.5" />
+                  <span>Compare Look ➔</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleDownload(inspectLook)}
-                  className="rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20 transition"
+                  className="flex items-center gap-1.5 rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20 transition backdrop-blur-md"
                 >
-                  Download Image
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Download Image</span>
                 </button>
               </div>
             </div>

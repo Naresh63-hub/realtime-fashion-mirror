@@ -1,4 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Camera,
+  VideoOff,
+  RefreshCw,
+  Maximize2,
+  Heart,
+  Download,
+  Sparkles,
+  Sliders,
+  X,
+  CheckCircle2,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { useVirtualTryOn } from '../hooks/useVirtualTryOn';
 import { GarmentPanel } from '../components/GarmentPanel';
 import { DebugPanel } from '../components/DebugPanel';
@@ -19,7 +32,6 @@ export const LiveCameraPage: React.FC = () => {
   const [showLandmarks, setShowLandmarks] = useState(false);
   const [showMask, setShowMask] = useState(false);
   const [captured, setCaptured] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const {
     engineReady,
@@ -54,14 +66,17 @@ export const LiveCameraPage: React.FC = () => {
   }, [showLandmarks]);
 
   useEffect(() => {
-    if (error) announce(error.message);
+    if (error) {
+      announce(error.message);
+      toast.error(error.message);
+    }
   }, [error, announce]);
 
   const handleCapture = useCallback(() => {
     const dataUrl = captureScreenshot();
     if (dataUrl) {
       setCaptured(dataUrl);
-      setSaveSuccess(false);
+      toast.success('Screenshot captured! You can now preview, save or download it.');
     }
   }, [captureScreenshot]);
 
@@ -71,6 +86,7 @@ export const LiveCameraPage: React.FC = () => {
     link.download = `tryon-live-${Date.now()}.png`;
     link.href = captured;
     link.click();
+    toast.success('Try-on image downloaded to your device.');
   }, [captured]);
 
   const handleSaveToGallery = useCallback(() => {
@@ -86,9 +102,13 @@ export const LiveCameraPage: React.FC = () => {
       isFavorite: false,
     });
     refreshSavedLooks();
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+    toast.success('Look saved to your private gallery!');
   }, [captured, garment, refreshSavedLooks]);
+
+  const handleSwitchCamera = useCallback(async () => {
+    await switchCamera();
+    toast.info('Switched camera facing mode.');
+  }, [switchCamera]);
 
   const toggleFullscreen = useCallback(() => {
     const stage = stageRef.current;
@@ -102,11 +122,13 @@ export const LiveCameraPage: React.FC = () => {
       {/* Top action header */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <span>📹</span>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-600/20 text-violet-400 border border-violet-500/30">
+              <Camera className="h-4 w-4" />
+            </div>
             <span>Live Camera Try-On</span>
           </h1>
-          <p className="text-xs sm:text-sm text-gray-400">
+          <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
             Real-time 33-point MediaPipe body tracking with dynamic torso anchoring and arm sleeves.
           </p>
         </div>
@@ -117,17 +139,19 @@ export const LiveCameraPage: React.FC = () => {
             onClick={toggleDebug}
             title={t('controls.debug_title')}
             ariaLabel={t('controls.debug_title')}
-            className="text-xs"
+            className="flex items-center gap-1.5 text-xs rounded-xl border border-white/10 bg-white/5"
           >
-            {debugMode ? '🛠️ Debug: ON' : '🛠️ Debug: OFF'}
+            <Sliders className="h-3.5 w-3.5" />
+            <span>{debugMode ? 'Debug: ON' : 'Debug: OFF'}</span>
           </Button>
 
           <button
             type="button"
             onClick={() => navigate('photo-upload')}
-            className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/10 transition"
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/10 transition backdrop-blur-md"
           >
-            ✨ Switch to Photo Try-On
+            <Sparkles className="h-3.5 w-3.5 text-violet-400" />
+            <span>Switch to Photo Try-On</span>
           </button>
         </div>
       </div>
@@ -135,7 +159,7 @@ export const LiveCameraPage: React.FC = () => {
       {(error || initializing) && (
         <div className="space-y-3">
           {initializing && !error && (
-            <div className="rounded-xl border border-white/10 bg-gray-900/60 p-4">
+            <div className="rounded-2xl border border-white/10 bg-gray-900/60 p-4 backdrop-blur-md">
               <Spinner label={t('camera.loading_models')} />
             </div>
           )}
@@ -148,7 +172,7 @@ export const LiveCameraPage: React.FC = () => {
         <section className="lg:col-span-2">
           <div
             ref={stageRef}
-            className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-white/10 bg-black sm:aspect-video shadow-2xl"
+            className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-white/10 bg-black sm:aspect-video shadow-2xl"
           >
             <canvas
               ref={canvasRef}
@@ -180,20 +204,23 @@ export const LiveCameraPage: React.FC = () => {
 
             {/* Empty / Not Started state */}
             {!cameraActive && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gray-950/80 p-6 text-center">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gray-950/80 p-6 text-center backdrop-blur-md">
                 {initializing ? (
                   <Spinner label={t('camera.loading_engine')} />
                 ) : (
                   <>
-                    <div className="text-5xl">👗</div>
+                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-violet-600/20 text-violet-400 border border-violet-500/30 shadow-lg shadow-violet-900/40">
+                      <Camera className="h-8 w-8" />
+                    </div>
                     <div>
-                      <p className="font-semibold text-white text-base">{t('camera.off_title')}</p>
-                      <p className="mt-1 text-sm text-gray-300">{t('camera.off_body')}</p>
+                      <p className="font-bold text-white text-base">{t('camera.off_title')}</p>
+                      <p className="mt-1 text-sm text-gray-400 max-w-sm">{t('camera.off_body')}</p>
                     </div>
                     <Button
                       onClick={() => void startCamera()}
                       disabled={!engineReady}
                       ariaLabel={t('a11y.start_camera')}
+                      className="rounded-xl px-6 py-3 font-semibold shadow-lg shadow-violet-600/30"
                     >
                       {t('controls.start_camera')}
                     </Button>
@@ -207,21 +234,41 @@ export const LiveCameraPage: React.FC = () => {
           </div>
 
           {/* Camera controls bar */}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2.5">
             {cameraActive ? (
               <>
-                <Button variant="danger" onClick={stopCamera} ariaLabel={t('a11y.stop_camera')}>
-                  {t('controls.stop_camera')}
-                </Button>
-                <Button variant="neutral" onClick={() => void switchCamera()} ariaLabel={t('a11y.switch_camera')}>
-                  🔄 {t('controls.switch_camera')}
-                </Button>
-                <Button variant="primary" onClick={handleCapture} ariaLabel={t('a11y.capture_photo')}>
-                  📸 {t('controls.capture_photo')}
-                </Button>
-                <Button variant="ghost" onClick={toggleFullscreen} title={t('controls.fullscreen_title')} ariaLabel={t('a11y.fullscreen')}>
-                  ⛶ {t('controls.fullscreen')}
-                </Button>
+                <button
+                  type="button"
+                  onClick={stopCamera}
+                  className="flex items-center gap-1.5 rounded-xl bg-red-600/90 px-4 py-2 text-xs font-semibold text-white hover:bg-red-600 transition shadow-md shadow-red-900/30"
+                >
+                  <VideoOff className="h-3.5 w-3.5" />
+                  <span>{t('controls.stop_camera')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSwitchCamera}
+                  className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  <span>{t('controls.switch_camera')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCapture}
+                  className="flex items-center gap-1.5 rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-500 transition shadow-md shadow-violet-600/30"
+                >
+                  <Camera className="h-3.5 w-3.5" />
+                  <span>{t('controls.capture_photo')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-300 hover:bg-white/10 transition backdrop-blur-md"
+                  title={t('controls.fullscreen_title')}
+                >
+                  <Maximize2 className="h-3.5 w-3.5" />
+                </button>
               </>
             ) : (
               <Button onClick={() => void startCamera()} disabled={!engineReady} ariaLabel={t('a11y.start_camera')}>
@@ -230,7 +277,7 @@ export const LiveCameraPage: React.FC = () => {
             )}
 
             {garment && (
-              <div className="ml-auto flex items-center gap-2 rounded-lg bg-white/5 px-3 py-1.5 border border-white/10 text-xs text-gray-300">
+              <div className="ml-auto flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-300 backdrop-blur-md">
                 <span>Wearing:</span>
                 <span className="font-semibold text-violet-300">{garment.name}</span>
                 <button
@@ -239,7 +286,7 @@ export const LiveCameraPage: React.FC = () => {
                   className="text-gray-400 hover:text-white ml-1"
                   title="Remove Garment"
                 >
-                  ✕
+                  <X className="h-3 w-3" />
                 </button>
               </div>
             )}
@@ -250,20 +297,29 @@ export const LiveCameraPage: React.FC = () => {
         <GarmentPanel
           currentGarmentId={garment?.id ?? null}
           disabled={!engineReady}
-          onSelect={(url, name, id) => void loadGarmentUrl(url, name, id)}
-          onUpload={(file) => void loadGarmentFile(file)}
-          onRemove={removeGarment}
+          onSelect={(url, name, id) => {
+            void loadGarmentUrl(url, name, id);
+            toast.success(`Selected garment: ${name}`);
+          }}
+          onUpload={(file) => {
+            void loadGarmentFile(file);
+            toast.success(`Uploaded garment: ${file.name}`);
+          }}
+          onRemove={() => {
+            removeGarment();
+            toast.info('Garment removed.');
+          }}
         />
       </div>
 
       {/* Capture preview modal */}
       {captured && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md"
           onClick={() => setCaptured(null)}
         >
           <div
-            className="flex max-w-lg flex-col gap-4 rounded-2xl border border-white/10 bg-gray-900 p-5 shadow-2xl"
+            className="flex max-w-lg w-full flex-col gap-4 rounded-3xl border border-white/10 bg-gray-900/90 p-5 shadow-2xl backdrop-blur-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -273,29 +329,38 @@ export const LiveCameraPage: React.FC = () => {
                 onClick={() => setCaptured(null)}
                 className="text-gray-400 hover:text-white"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
             <img
               src={captured}
               alt="Screenshot of Virtual Try-On"
-              className="max-h-[60vh] rounded-xl object-contain border border-white/10 bg-black"
+              className="max-h-[60vh] rounded-2xl object-contain border border-white/10 bg-black"
             />
-            {saveSuccess && (
-              <p className="text-xs text-emerald-400 font-semibold text-center">
-                ✓ Look saved to your private gallery!
-              </p>
-            )}
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button variant="ghost" onClick={() => setCaptured(null)}>
+            <div className="flex flex-wrap justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setCaptured(null)}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-gray-300 hover:bg-white/10 transition"
+              >
                 {t('common.close')}
-              </Button>
-              <Button variant="neutral" onClick={handleSaveToGallery}>
-                ❤️ Save Look
-              </Button>
-              <Button variant="primary" onClick={handleDownload}>
-                📥 {t('controls.download')}
-              </Button>
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveToGallery}
+                className="flex items-center gap-1.5 rounded-xl border border-violet-500/30 bg-violet-950/40 px-4 py-2 text-xs font-semibold text-violet-300 hover:bg-violet-950/60 transition"
+              >
+                <Heart className="h-3.5 w-3.5 text-violet-400" />
+                <span>Save Look</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="flex items-center gap-1.5 rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-500 transition shadow-md shadow-violet-600/30"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>{t('controls.download')}</span>
+              </button>
             </div>
           </div>
         </div>

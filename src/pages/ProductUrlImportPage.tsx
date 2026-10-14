@@ -1,4 +1,16 @@
 import React, { useState, useRef } from 'react';
+import {
+  Link2,
+  ExternalLink,
+  Camera,
+  Sparkles,
+  UploadCloud,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  Search,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
 import {
   extractProductFromUrl,
@@ -21,20 +33,26 @@ export const ProductUrlImportPage: React.FC = () => {
   const handleFetch = async (targetUrl?: string) => {
     const url = targetUrl || urlInput;
     if (!url.trim()) {
-      setError('Please paste a product URL to fetch.');
+      const msg = 'Please paste a product URL to fetch.';
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
     setLoading(true);
     setError(null);
     setExtracted(null);
+    toast.loading('Analyzing link & fetching product imagery...', { id: 'fetch-prod' });
 
     try {
       const data = await extractProductFromUrl(url);
       setExtracted(data);
       setSelectedImage(data.selectedImageUrl);
+      toast.success(`Successfully extracted ${data.title}!`, { id: 'fetch-prod' });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to extract product information from URL.');
+      const msg = err instanceof Error ? err.message : 'Failed to extract product information from URL.';
+      setError(msg);
+      toast.error(msg, { id: 'fetch-prod' });
     } finally {
       setLoading(false);
     }
@@ -59,6 +77,7 @@ export const ProductUrlImportPage: React.FC = () => {
       setExtracted(manualProduct);
       setSelectedImage(dataUrl);
       setError(null);
+      toast.success('Custom garment image uploaded successfully!');
     };
     reader.readAsDataURL(file);
   };
@@ -86,6 +105,7 @@ export const ProductUrlImportPage: React.FC = () => {
     if (!extracted) return;
     const prod = convertToProduct(extracted, selectedImage);
     setSelectedGarment(prod);
+    toast.success(`Loaded ${prod.name} into Live Camera`);
     navigate('live');
   };
 
@@ -93,6 +113,7 @@ export const ProductUrlImportPage: React.FC = () => {
     if (!extracted) return;
     const prod = convertToProduct(extracted, selectedImage);
     setSelectedGarment(prod);
+    toast.success(`Loaded ${prod.name} into Photo Try-On`);
     navigate('photo-upload');
   };
 
@@ -100,41 +121,53 @@ export const ProductUrlImportPage: React.FC = () => {
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-2">
-          <span>🔗</span>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-fuchsia-600/20 text-fuchsia-400 border border-fuchsia-500/30">
+            <Link2 className="h-4 w-4" />
+          </div>
           <span>Shopping Product URL Import</span>
         </h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-xs sm:text-sm text-gray-400 mt-1">
           Paste any shopping product link. We extract garment imagery and metadata so you can virtually try it on.
         </p>
       </div>
 
       {/* URL Input Form */}
-      <div className="rounded-3xl border border-white/10 bg-gray-900/70 p-6 space-y-4">
+      <div className="rounded-3xl border border-white/10 bg-gray-900/70 p-6 space-y-4 backdrop-blur-xl shadow-2xl">
         <label htmlFor="product-url-input" className="block text-xs font-bold uppercase tracking-wider text-gray-300">
           Product URL from Online Retailer
         </label>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            id="product-url-input"
-            type="url"
-            value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            placeholder="Paste your product link here (e.g. https://www.myntra.com/...)"
-            className="flex-1 rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-          />
+          <div className="relative flex-1">
+            <Link2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+            <input
+              id="product-url-input"
+              type="url"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              placeholder="Paste product link (e.g. https://www.myntra.com/...)"
+              className="w-full rounded-2xl border border-white/10 bg-black/60 pl-10 pr-4 py-3 text-xs sm:text-sm text-white placeholder-gray-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition"
+            />
+          </div>
           <button
             type="button"
             onClick={() => handleFetch()}
             disabled={loading}
-            className="rounded-xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-40 transition flex items-center justify-center gap-2"
+            className="flex items-center justify-center gap-2 rounded-2xl bg-violet-600 px-6 py-3 text-xs sm:text-sm font-semibold text-white hover:bg-violet-500 shadow-lg shadow-violet-600/30 disabled:opacity-40 transition"
           >
-            {loading ? <Spinner label="Fetching..." /> : <span>Fetch Product</span>}
+            {loading ? (
+              <Spinner label="Fetching..." />
+            ) : (
+              <>
+                <Search className="h-4 w-4" />
+                <span>Fetch Product</span>
+              </>
+            )}
           </button>
         </div>
 
-        {/* Supported Retailer Pills for quick testing */}
+        {/* Supported Retailer Pills */}
         <div className="pt-2">
           <p className="text-[11px] text-gray-400 mb-2 font-medium">Quick Test with Supported Retailers:</p>
           <div className="flex flex-wrap gap-2">
@@ -146,7 +179,7 @@ export const ProductUrlImportPage: React.FC = () => {
                   setUrlInput(ret.example);
                   void handleFetch(ret.example);
                 }}
-                className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-gray-300 hover:bg-white/10 hover:text-white transition"
+                className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-300 hover:bg-white/10 hover:text-white transition backdrop-blur-md"
               >
                 {ret.name}
               </button>
@@ -157,13 +190,18 @@ export const ProductUrlImportPage: React.FC = () => {
 
       {/* Error Banner with Manual Fallback option */}
       {error && (
-        <div className="rounded-2xl border border-red-500/40 bg-red-950/30 p-5 space-y-3">
+        <div className="rounded-2xl border border-red-500/40 bg-red-950/30 p-5 space-y-3 backdrop-blur-xl">
           <div className="flex items-start justify-between">
-            <div>
-              <h4 className="font-bold text-red-300 text-sm">Product URL Extraction Note</h4>
-              <p className="text-xs text-red-200 mt-1">{error}</p>
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-bold text-red-300 text-sm">Product URL Extraction Note</h4>
+                <p className="text-xs text-red-200 mt-1">{error}</p>
+              </div>
             </div>
-            <button type="button" onClick={() => setError(null)} className="text-red-400 hover:text-white">✕</button>
+            <button type="button" onClick={() => setError(null)} className="text-red-400 hover:text-white">
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
           <div className="pt-2 border-t border-red-500/20 flex flex-wrap items-center justify-between gap-3">
@@ -173,9 +211,10 @@ export const ProductUrlImportPage: React.FC = () => {
             <button
               type="button"
               onClick={() => fallbackUploadRef.current?.click()}
-              className="rounded-lg bg-white/10 px-4 py-1.5 text-xs font-semibold text-white hover:bg-white/20 transition"
+              className="flex items-center gap-1.5 rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20 transition backdrop-blur-md"
             >
-              Upload Product Image Manually
+              <UploadCloud className="h-3.5 w-3.5" />
+              <span>Upload Product Image Manually</span>
             </button>
           </div>
         </div>
@@ -194,19 +233,20 @@ export const ProductUrlImportPage: React.FC = () => {
 
       {/* Extracted Product Preview Card */}
       {extracted && (
-        <div className="rounded-3xl border border-white/10 bg-gray-900/80 p-6 space-y-6">
-          <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <div className="rounded-3xl border border-white/10 bg-gray-900/80 p-6 space-y-6 backdrop-blur-2xl shadow-2xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
             <div>
-              <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300 border border-emerald-500/30">
-                ✓ Product Extracted Successfully
-              </span>
-              <h2 className="text-xl font-bold text-white mt-2">{extracted.title}</h2>
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300 border border-emerald-500/30">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>Product Extracted Successfully</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-white mt-2">{extracted.title}</h2>
               <p className="text-xs text-violet-400 font-semibold">{extracted.brand} • {extracted.retailer}</p>
             </div>
             {extracted.price && (
-              <div className="text-right">
-                <span className="text-xs text-gray-400">Price</span>
-                <p className="text-xl font-bold text-white">₹{extracted.price}</p>
+              <div className="sm:text-right">
+                <span className="text-xs text-gray-400">Retail Price</span>
+                <p className="text-2xl font-black text-white">₹{extracted.price}</p>
               </div>
             )}
           </div>
@@ -224,7 +264,7 @@ export const ProductUrlImportPage: React.FC = () => {
             {/* Product details & Available Images */}
             <div className="md:col-span-7 space-y-4">
               {extracted.description && (
-                <p className="text-xs text-gray-300 leading-relaxed bg-white/5 p-3 rounded-xl border border-white/5">
+                <p className="text-xs text-gray-300 leading-relaxed bg-white/5 p-3 rounded-2xl border border-white/5">
                   {extracted.description}
                 </p>
               )}
@@ -239,7 +279,7 @@ export const ProductUrlImportPage: React.FC = () => {
                         key={i}
                         type="button"
                         onClick={() => setSelectedImage(img)}
-                        className={`h-16 w-16 rounded-xl border p-1 transition ${
+                        className={`h-16 w-16 rounded-2xl border p-1 transition ${
                           selectedImage === img
                             ? 'border-violet-500 bg-violet-500/20 ring-2 ring-violet-500'
                             : 'border-white/10 bg-white/5 hover:border-violet-400'
@@ -257,24 +297,27 @@ export const ProductUrlImportPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleStartLiveTryOn}
-                  className="rounded-xl bg-violet-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-violet-500 shadow-md transition flex items-center gap-1.5"
+                  className="flex items-center gap-1.5 rounded-xl bg-violet-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-violet-500 shadow-lg shadow-violet-600/30 transition"
                 >
-                  📹 Try On in Live Camera
+                  <Camera className="h-3.5 w-3.5" />
+                  <span>Try On in Live Camera</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleStartPhotoTryOn}
-                  className="rounded-xl bg-purple-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-purple-500 shadow-md transition flex items-center gap-1.5"
+                  className="flex items-center gap-1.5 rounded-xl bg-purple-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-purple-500 shadow-lg shadow-purple-600/30 transition"
                 >
-                  ✨ Try On with Photo
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>Try On with Photo</span>
                 </button>
                 <a
                   href={extracted.originalUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold text-gray-300 hover:bg-white/10 transition flex items-center gap-1.5"
+                  className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold text-gray-300 hover:bg-white/10 transition backdrop-blur-md"
                 >
-                  🔗 Open Store Page ↗
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  <span>Open Store Page ↗</span>
                 </a>
               </div>
             </div>
