@@ -42,8 +42,8 @@ export function affineFromTriangles(src: [Point, Point, Point], dst: [Point, Poi
 
   const det = x1 * (y2 - y3) - x2 * (y1 - y3) + x3 * (y1 - y2);
   if (Math.abs(det) < 1e-8) {
-    // Degenerate source triangle — identity, renderer will skip slivers.
-    return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+    // Degenerate source triangle — return null so renderer skips slivers
+    return null;
   }
 
   const a = (u1 * (y2 - y3) - u2 * (y1 - y3) + u3 * (y1 - y2)) / det;

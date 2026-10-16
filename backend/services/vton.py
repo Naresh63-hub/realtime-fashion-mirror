@@ -14,8 +14,12 @@ from backend.models import (
 )
 
 
-# In-memory job registry for demonstration and testing
-JOBS: Dict[str, TryOnJobResponse] = {}
+from collections import OrderedDict
+
+from backend.security import validate_url_ssrf_safe
+
+MAX_JOBS = 100
+JOBS: OrderedDict[str, TryOnJobResponse] = OrderedDict()
 
 
 def validate_tryon_inputs(req: TryOnJobCreateRequest) -> None:
@@ -24,6 +28,11 @@ def validate_tryon_inputs(req: TryOnJobCreateRequest) -> None:
         raise ValueError("Invalid person photograph: image payload missing or empty.")
     if not req.garment_image or len(req.garment_image.strip()) < 10:
         raise ValueError("Invalid garment image: image payload missing or empty.")
+
+    # Validate image URLs against SSRF if passed as web links
+    for payload in (req.person_image.strip(), req.garment_image.strip()):
+        if payload.startswith("http://") or payload.startswith("https://"):
+            validate_url_ssrf_safe(payload)
 
 
 def create_tryon_job(req: TryOnJobCreateRequest) -> TryOnJobResponse:
@@ -52,6 +61,8 @@ def create_tryon_job(req: TryOnJobCreateRequest) -> TryOnJobResponse:
         result_image_url=result_url if req.model_name == "client-high-res" else None,
         model_name=req.model_name or "client-high-res",
     )
+    if len(JOBS) >= MAX_JOBS:
+        JOBS.popitem(last=False)
     JOBS[job_id] = job
     return job
 

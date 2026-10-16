@@ -143,6 +143,9 @@ export const APP_CONFIG = {
     DEBOUNCE_DELAY: 300,
     LOADING_TIMEOUT: 20000,
   },
+  API: {
+    BASE_URL: ENV.API_URL,
+  },
 } as const;
 
 export const CLOTHING_DEFAULTS: Record<

@@ -103,4 +103,5 @@ export const ENV = {
   COMMERCE_CURRENCY: str('VITE_COMMERCE_CURRENCY', 'INR'),
   MAX_RECORD_SECONDS: num('VITE_MAX_RECORD_SECONDS', 30, 1, 600),
   PHYSICS_ENABLED: bool('VITE_PHYSICS_ENABLED', false),
+  API_URL: str('VITE_API_URL', 'http://localhost:8000'),
 } as const;

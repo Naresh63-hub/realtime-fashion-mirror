@@ -135,22 +135,6 @@ async def extract_product_from_url(url: str) -> UrlExtractResponse:
     parsed = urlparse(safe_url)
     hostname = (parsed.hostname or "").lower()
 
-    # Check for known fixture domains for instant demo/testing reliability
-    for domain_key, fixture in DEMO_CATALOG_FIXTURES.items():
-        if domain_key in hostname:
-            return UrlExtractResponse(
-                title=fixture["title"],
-                brand=fixture.get("brand"),
-                price=fixture.get("price"),
-                currency=fixture.get("currency", "INR"),
-                images=fixture["images"],
-                selected_image_url=fixture["images"][0],
-                original_url=safe_url,
-                category=fixture.get("category", "t-shirt"),
-                retailer=fixture.get("retailer", domain_key.split(".")[0].capitalize()),
-                description=fixture.get("description"),
-            )
-
     # 2. Live HTTP GET with strict security limits
     headers = {
         "User-Agent": (
@@ -162,16 +146,42 @@ async def extract_product_from_url(url: str) -> UrlExtractResponse:
     }
 
     html_content = ""
-    async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, max_redirects=3) as client:
-        try:
-            resp = await client.get(safe_url, headers=headers)
-            # Ensure final redirect target is also SSRF safe
-            validate_url_ssrf_safe(str(resp.url))
-            if resp.status_code == 200:
-                html_content = resp.text
-        except httpx.HTTPError:
-            # Fall back to heuristic parsing from URL slug
-            pass
+    try:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
+            current_target = safe_url
+            for _ in range(4):  # Up to 3 redirects
+                validate_url_ssrf_safe(current_target)
+                resp = await client.get(current_target, headers=headers)
+                if resp.is_redirect:
+                    location = resp.headers.get("Location")
+                    if not location:
+                        break
+                    current_target = urljoin(str(resp.url), location)
+                elif resp.status_code == 200:
+                    html_content = resp.text
+                    break
+                else:
+                    break
+    except Exception:
+        # Fall back to fixture or heuristic parsing
+        pass
+
+    # If live fetch was unsuccessful or blocked, check known fixtures for offline/test reliability
+    if not html_content or len(html_content.strip()) < 50:
+        for domain_key, fixture in DEMO_CATALOG_FIXTURES.items():
+            if domain_key in hostname:
+                return UrlExtractResponse(
+                    title=fixture["title"],
+                    brand=fixture.get("brand"),
+                    price=fixture.get("price"),
+                    currency=fixture.get("currency", "INR"),
+                    images=fixture["images"],
+                    selected_image_url=fixture["images"][0],
+                    original_url=safe_url,
+                    category=fixture.get("category", "t-shirt"),
+                    retailer=fixture.get("retailer", domain_key.split(".")[0].capitalize()),
+                    description=fixture.get("description"),
+                )
 
     # 3. Parse Metadata (OpenGraph, Twitter, JSON-LD)
     title = (

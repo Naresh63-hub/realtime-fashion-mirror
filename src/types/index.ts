@@ -456,6 +456,12 @@ export interface PerformanceMetrics {
   inferenceFps: number;
   /** JS heap usage in MB when `performance.memory` is available. */
   heapMb?: number;
+  /** Age of the frame at inference time in ms. */
+  frameAgeMs?: number;
+  /** Number of stale frames dropped to preserve real-time latency. */
+  droppedFrames?: number;
+  /** Battery / thermal summary if navigator.getBattery is available. */
+  batteryInfo?: string;
 }
 
 export type TrackingStatus = 'idle' | 'searching' | 'tracking' | 'coasting' | 'lost';

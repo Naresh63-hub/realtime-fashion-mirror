@@ -26,7 +26,12 @@ export const DebugPanel: React.FC<Props> = ({
     <div>{t('debug.pose')}: {metrics.poseInferenceMs.toFixed(1)} ms</div>
     <div>{t('debug.seg')}: {metrics.segmentationInferenceMs.toFixed(1)} ms</div>
     <div>{t('debug.infer_fps')}: {metrics.inferenceFps}</div>
-    {metrics.heapMb !== undefined && <div>{t('debug.heap')}: {metrics.heapMb} MB</div>}
+    <div>Frame Age: {(metrics.frameAgeMs ?? 0).toFixed(0)} ms</div>
+    <div>Dropped Frames: {metrics.droppedFrames ?? 0}</div>
+    <div>
+      {t('debug.heap')}: {metrics.heapMb !== undefined ? `${metrics.heapMb} MB` : 'N/A (Chromium only)'}
+    </div>
+    {metrics.batteryInfo && <div className="text-amber-300/90">{metrics.batteryInfo}</div>}
     <div>{t('debug.tracking')}: {tracking}</div>
     <div className="mt-2 flex gap-2">
       <button

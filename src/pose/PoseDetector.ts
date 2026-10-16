@@ -29,6 +29,7 @@ export class PoseDetector {
   private landmarker: PoseLandmarker | null = null;
   private lastVideoTime = -1;
   private lastResult: PoseLandmarkerResult | null = null;
+  private droppedFrameCount = 0;
   /** Shared in-flight init so concurrent callers (React StrictMode
    *  double-mount) await one graph instead of racing two. */
   private initPromise: Promise<void> | null = null;
@@ -46,25 +47,77 @@ export class PoseDetector {
     this.disposed = false;
     const creation = (async () => {
       const fileset = await getWasmFileset();
-      const landmarker = await PoseLandmarker.createFromOptions(fileset, {
-        baseOptions: {
-          modelAssetPath: modelUrl(ENV.POSE_MODEL_FILE),
-          delegate: ENV.POSE_DELEGATE_GPU ? 'GPU' : 'CPU',
-        },
-        runningMode: 'VIDEO',
-        numPoses: APP_CONFIG.POSE.NUM_POSES,
-        minPoseDetectionConfidence: APP_CONFIG.POSE.MIN_DETECTION_CONFIDENCE,
-        minPosePresenceConfidence: APP_CONFIG.POSE.MIN_PRESENCE_CONFIDENCE,
-        minTrackingConfidence: APP_CONFIG.POSE.MIN_TRACKING_CONFIDENCE,
-        outputSegmentationMasks: false,
-      });
+      let delegate: 'GPU' | 'CPU' = ENV.POSE_DELEGATE_GPU ? 'GPU' : 'CPU';
+
+      // Feature-detect WebGPU if preferred; keep WebGL GPU as robust default
+      if (ENV.POSE_DELEGATE_GPU && ENV.WEBGPU_PREFERRED) {
+        const hasWebGPU = typeof navigator !== 'undefined' && 'gpu' in navigator;
+        if (hasWebGPU) {
+          logger.debug('WebGPU available on device; WebGL/GPU delegate active');
+        }
+      }
+
+      let landmarker: PoseLandmarker;
+      try {
+        landmarker = await PoseLandmarker.createFromOptions(fileset, {
+          baseOptions: {
+            modelAssetPath: modelUrl(ENV.POSE_MODEL_FILE),
+            delegate,
+          },
+          runningMode: 'VIDEO',
+          numPoses: APP_CONFIG.POSE.NUM_POSES,
+          minPoseDetectionConfidence: APP_CONFIG.POSE.MIN_DETECTION_CONFIDENCE,
+          minPosePresenceConfidence: APP_CONFIG.POSE.MIN_PRESENCE_CONFIDENCE,
+          minTrackingConfidence: APP_CONFIG.POSE.MIN_TRACKING_CONFIDENCE,
+          outputSegmentationMasks: false,
+        });
+      } catch (gpuErr) {
+        if (delegate === 'GPU') {
+          logger.warn('GPU delegate init failed, falling back to CPU:', gpuErr);
+          delegate = 'CPU';
+          landmarker = await PoseLandmarker.createFromOptions(fileset, {
+            baseOptions: {
+              modelAssetPath: modelUrl(ENV.POSE_MODEL_FILE),
+              delegate: 'CPU',
+            },
+            runningMode: 'VIDEO',
+            numPoses: APP_CONFIG.POSE.NUM_POSES,
+            minPoseDetectionConfidence: APP_CONFIG.POSE.MIN_DETECTION_CONFIDENCE,
+            minPosePresenceConfidence: APP_CONFIG.POSE.MIN_PRESENCE_CONFIDENCE,
+            minTrackingConfidence: APP_CONFIG.POSE.MIN_TRACKING_CONFIDENCE,
+            outputSegmentationMasks: false,
+          });
+        } else {
+          throw gpuErr;
+        }
+      }
+
       // Unmount raced the init: release immediately instead of leaking.
       if (this.disposed) {
         landmarker.close();
         return;
       }
       this.landmarker = landmarker;
-      logger.debug('PoseLandmarker ready');
+
+      // Google MediaPipe best practice: run 1 warmup placeholder inference to JIT-tune
+      // the WASM runtime and GPU pipeline, avoiding 3-10x latency on the first live frame.
+      try {
+        if (typeof document !== 'undefined') {
+          const warmupCanvas = document.createElement('canvas');
+          warmupCanvas.width = 64;
+          warmupCanvas.height = 64;
+          const wctx = warmupCanvas.getContext('2d');
+          if (wctx) {
+            wctx.fillStyle = '#808080';
+            wctx.fillRect(0, 0, 64, 64);
+            landmarker.detectForVideo(warmupCanvas as unknown as HTMLVideoElement, 1);
+          }
+        }
+      } catch (warmupErr) {
+        logger.debug('PoseLandmarker placeholder warmup skipped:', warmupErr);
+      }
+
+      logger.debug('PoseLandmarker ready and warmed up');
     })();
 
     this.initPromise = creation.then(
@@ -83,14 +136,27 @@ export class PoseDetector {
     return this.landmarker !== null;
   }
 
+  getDroppedFrames(): number {
+    return this.droppedFrameCount;
+  }
+
   /**
    * Run detection for the current video frame.
-   * Returns null when nothing new was produced (duplicate timestamp)
+   * Returns null when frame is stale (>MAX_FRAME_AGE_MS), duplicate timestamp,
    * or no person was found.
    */
-  detectForVideo(video: HTMLVideoElement, timestampMs: number): Pose | null {
+  detectForVideo(video: HTMLVideoElement, timestampMs: number, captureTimestampMs?: number): Pose | null {
     if (!this.landmarker) return null;
     if (video.readyState < 2 || video.videoWidth === 0) return null;
+
+    // Frame-age check: skip stale frames older than MAX_FRAME_AGE_MS to prevent lag backlog
+    if (captureTimestampMs !== undefined) {
+      const age = performance.now() - captureTimestampMs;
+      if (age > APP_CONFIG.POSE.MAX_FRAME_AGE_MS) {
+        this.droppedFrameCount++;
+        return null;
+      }
+    }
 
     // MediaPipe requires strictly increasing timestamps; skip stale frames.
     if (video.currentTime === this.lastVideoTime) return null;

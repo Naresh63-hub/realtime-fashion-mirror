@@ -21,6 +21,7 @@
 import type { TryOnJob, TryOnResult, ClothingCategory } from '../types';
 import { ClothingCategory as CC } from '../types';
 import { ImagePoseService } from './imagePoseService';
+import { getBackendApiUrl } from './productExtractor';
 
 export interface TryOnFitOptions {
   offsetY?: number; // In pixels, e.g. -400 to +400
@@ -41,7 +42,16 @@ export interface TryOnRequest {
   fitOptions?: TryOnFitOptions;
 }
 
+const MAX_ACTIVE_JOBS = 50;
 const activeJobs = new Map<string, TryOnJob>();
+
+function setBoundedJob(job: TryOnJob): void {
+  if (activeJobs.size >= MAX_ACTIVE_JOBS) {
+    const oldestKey = activeJobs.keys().next().value;
+    if (oldestKey) activeJobs.delete(oldestKey);
+  }
+  activeJobs.set(job.id, job);
+}
 
 export class VirtualTryOnService {
   /**
@@ -83,11 +93,12 @@ export class VirtualTryOnService {
       modelName: mode === 'client-high-res' ? 'Client High-Res Mesh Warp Engine' : 'Cloud GenAI VTON Model',
     };
 
-    activeJobs.set(jobId, job);
+    setBoundedJob(job);
 
     if (mode === 'cloud-genai') {
       try {
-        const resp = await fetch('http://localhost:8000/api/tryon/jobs', {
+        const backendUrl = getBackendApiUrl();
+        const resp = await fetch(`${backendUrl}/api/tryon/jobs`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -104,7 +115,7 @@ export class VirtualTryOnService {
           job.id = data.job_id;
           job.status = 'processing';
           job.progress = data.progress || 35;
-          activeJobs.set(job.id, job);
+          setBoundedJob(job);
           return job;
         }
       } catch {
@@ -147,7 +158,8 @@ export class VirtualTryOnService {
     if (local) {
       if (local.modelName.includes('Cloud')) {
         try {
-          const resp = await fetch(`http://localhost:8000/api/tryon/jobs/${jobId}`);
+          const backendUrl = getBackendApiUrl();
+          const resp = await fetch(`${backendUrl}/api/tryon/jobs/${jobId}`);
           if (resp.ok) {
             const data = await resp.json();
             local.status = data.status;

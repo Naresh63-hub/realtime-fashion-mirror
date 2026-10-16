@@ -145,6 +145,10 @@ export class CameraManager {
     return { ...this.config };
   }
 
+  setConfig(config: Partial<CameraConfig>): void {
+    this.config = { ...this.config, ...config };
+  }
+
   dispose(): void {
     this.stop();
   }

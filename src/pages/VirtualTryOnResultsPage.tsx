@@ -58,7 +58,7 @@ export const VirtualTryOnResultsPage: React.FC = () => {
   const [framingPreset, setFramingPreset] = useState<'auto' | 'portrait' | 'half-body' | 'full-body'>('auto');
 
   // Debounce ref to keep slider performance ultra smooth
-  const renderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const renderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const recomputeDrape = useCallback(
     (opts: TryOnFitOptions) => {
@@ -377,7 +377,7 @@ export const VirtualTryOnResultsPage: React.FC = () => {
 
           {/* Interactive Fitting Studio & Drape Controls */}
           {showFitStudio && (
-            <div className="rounded-3xl border border-violet-500/30 bg-gray-900/80 p-5 space-y-5 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="rounded-3xl border border-violet-500/30 bg-gray-900/80 p-5 space-y-5 backdrop-blur-xl shadow-2xl transition-all duration-300">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2">
                   <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-violet-600/30 text-violet-400 border border-violet-500/40">

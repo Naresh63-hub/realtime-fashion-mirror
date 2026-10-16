@@ -8,6 +8,8 @@ describe('affineFromTriangles', () => {
   it('returns identity for identical triangles', () => {
     const tri: [Point, Point, Point] = [p(10, 10), p(50, 10), p(10, 50)];
     const m = affineFromTriangles(tri, tri);
+    expect(m).not.toBeNull();
+    if (!m) return;
     const transformed = {
       x: m.a * 20 + m.c * 30 + m.e,
       y: m.b * 20 + m.d * 30 + m.f,
@@ -21,6 +23,8 @@ describe('affineFromTriangles', () => {
     const dst: [Point, Point, Point] = [p(200, 100), p(400, 120), p(180, 300)];
 
     const m = affineFromTriangles(src, dst);
+    expect(m).not.toBeNull();
+    if (!m) return;
     const apply = (pt: Point): Point => ({
       x: m.a * pt.x + m.c * pt.y + m.e,
       y: m.b * pt.x + m.d * pt.y + m.f,
@@ -42,6 +46,8 @@ describe('affineFromTriangles', () => {
     const src: [Point, Point, Point] = [p(0, 0), p(10, 0), p(0, 10)];
     const dst: [Point, Point, Point] = [p(0, 0), p(0, 10), p(-10, 0)];
     const m = affineFromTriangles(src, dst);
+    expect(m).not.toBeNull();
+    if (!m) return;
     const px = 10;
     const py = 0;
     const x = m.a * px + m.c * py + m.e;
@@ -50,14 +56,11 @@ describe('affineFromTriangles', () => {
     expect(y).toBeCloseTo(10, 5);
   });
 
-  it('returns identity matrix for degenerate triangles', () => {
+  it('returns null for degenerate triangles', () => {
     const src: [Point, Point, Point] = [p(0, 0), p(10, 0), p(20, 0)]; // collinear
     const dst: [Point, Point, Point] = [p(0, 0), p(0, 10), p(0, 20)];
     const m = affineFromTriangles(src, dst);
-    expect(m.a).toBe(1);
-    expect(m.d).toBe(1);
-    expect(m.e).toBe(0);
-    expect(m.f).toBe(0);
+    expect(m).toBeNull();
   });
 });
 

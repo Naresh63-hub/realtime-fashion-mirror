@@ -12,6 +12,6 @@ export default defineConfig({
     target: 'es2022',
     chunkSizeWarningLimit: 1600,
   },
-  // Large binary assets served from public/ are excluded from bundling.
-  assetsExclude: [/\.task$/, /\.tflite$/],
+  // Large binary assets served from public/ are included as static assets.
+  assetsInclude: [/\.task$/, /\.tflite$/],
 })

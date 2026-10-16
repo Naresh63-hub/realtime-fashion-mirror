@@ -65,11 +65,26 @@ export class StorageService {
       isFavorite: look.isFavorite ?? false,
     };
     list.unshift(newLook);
-    try {
-      localStorage.setItem(STORAGE_KEYS.SAVED_LOOKS, JSON.stringify(list));
-      this.incrementTryOnCount();
-    } catch (err) {
-      console.warn('Could not persist look to localStorage:', err);
+
+    // Bound total saved looks to prevent browser storage exhaustion
+    const MAX_SAVED_LOOKS = 15;
+    const trimmed = list.slice(0, MAX_SAVED_LOOKS);
+
+    let saved = false;
+    while (!saved && trimmed.length > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEYS.SAVED_LOOKS, JSON.stringify(trimmed));
+        this.incrementTryOnCount();
+        saved = true;
+      } catch {
+        // Quota exceeded: evict oldest non-favorite look first
+        const nonFavIdx = trimmed.findLastIndex((l) => !l.isFavorite);
+        if (nonFavIdx > 0) {
+          trimmed.splice(nonFavIdx, 1);
+        } else {
+          trimmed.pop();
+        }
+      }
     }
     return newLook;
   }

@@ -37,6 +37,7 @@ import { logger } from '../utils/logger';
 import { removeBackground } from './backgroundRemoval';
 import { classifyGarment } from './classifier';
 import { detectAnchors } from './anchorDetection';
+import { TrackingSmoother } from '../utils/smoothing';
 
 type WorkerResultPayload = {
   width: number;
@@ -56,6 +57,7 @@ type WorkerClothingConfig = {
 export class ClothingEngine {
   private current: ClothingItem | null = null;
   private worker: Worker | null = null;
+  private smoother = new TrackingSmoother(APP_CONFIG.TRACKING.SMOOTHING_FACTOR);
 
   constructor() {
     const useWorker = APP_CONFIG.PERFORMANCE.USE_WORKER;
@@ -104,6 +106,10 @@ export class ClothingEngine {
   }
 
   private replaceCurrent(item: ClothingItem): void {
+    if (this.current && this.current.imageUrl.startsWith('blob:') && this.current.imageUrl !== item.imageUrl) {
+      URL.revokeObjectURL(this.current.imageUrl);
+      this.blobUrls = this.blobUrls.filter((u) => u !== this.current!.imageUrl);
+    }
     this.current = item;
   }
 
@@ -117,12 +123,17 @@ export class ClothingEngine {
   }
 
   private loadImageElement(url: string): Promise<HTMLImageElement> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const image = new Image();
       image.crossOrigin = 'anonymous';
       image.onload = () => resolve(image);
-      image.onerror = () =>
-        appError(ErrorType.CLOTHING_IMAGE_INVALID, `failed to decode image`);
+      image.onerror = () => {
+        try {
+          appError(ErrorType.CLOTHING_IMAGE_INVALID, `failed to decode image`);
+        } catch (err) {
+          reject(err);
+        }
+      };
       image.src = url;
     });
   }
@@ -315,7 +326,12 @@ export class ClothingEngine {
     this.current = garment;
   }
 
+  resetSmoother(): void {
+    this.smoother.reset();
+  }
+
   dispose(): void {
+    this.smoother.reset();
     this.blobUrls.forEach((url) => URL.revokeObjectURL(url));
     this.blobUrls = [];
     this.current = null;
@@ -389,12 +405,21 @@ export class ClothingEngine {
     const bodyShoulderSpan = dist(LS, RS);
     const bodyTorsoLen = Math.max(1, dist(bodyShoulderMid, bodyHipMid));
 
+    // Temporal stabilization per garment part using TrackingSmoother
+    const rawRotation = Math.atan2(RS.y - LS.y, RS.x - LS.x);
+    const smoothedPos = this.smoother.smoothPosition(bodyShoulderMid.x, bodyShoulderMid.y);
+    const smoothedSpan = this.smoother.smoothScale(bodyShoulderSpan);
+    const smoothedRot = this.smoother.smoothRotation(rawRotation);
+
+    const stabilizedShoulderMid = { x: smoothedPos.x, y: smoothedPos.y };
+    const stabilizedShoulderSpan = smoothedSpan;
+
     // Unit axes: body frame (screen px) — +x along shoulders, +y down torso.
-    const bAxisX = normalize(sub(RS, LS));
-    const bAxisY = normalize(sub(bodyHipMid, bodyShoulderMid));
+    const bAxisX = { x: Math.cos(smoothedRot), y: Math.sin(smoothedRot) };
+    const bAxisY = normalize(sub(bodyHipMid, stabilizedShoulderMid));
 
     // Hip shear: horizontal hip offset from the shoulder line (bending).
-    const hipShear = dot(sub(bodyHipMid, bodyShoulderMid), { x: -bAxisY.y, y: bAxisY.x });
+    const hipShear = dot(sub(bodyHipMid, stabilizedShoulderMid), { x: -bAxisY.y, y: bAxisY.x });
 
     /**
      * Re-project a garment anchor-space point onto the body.

@@ -46,7 +46,7 @@ async function getStaticLandmarker(): Promise<PoseLandmarker | null> {
         minPoseDetectionConfidence: 0.25,
       });
       staticLandmarker = landmarker;
-      logger.info('MediaPipe static image pose landmarker ready');
+      logger.debug('MediaPipe static image pose landmarker ready');
       return landmarker;
     } catch (err) {
       logger.warn('Could not initialize MediaPipe for static image, falling back to geometric analysis:', err);

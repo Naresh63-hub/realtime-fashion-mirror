@@ -73,21 +73,38 @@ export class Renderer {
     if (!ctx) throw new Error('Canvas 2D context unavailable');
     this.ctx = ctx;
 
+    const initialWidth = Math.max(1, this.canvas.width || 1280);
+    const initialHeight = Math.max(1, this.canvas.height || 720);
+    this.canvas.width = initialWidth;
+    this.canvas.height = initialHeight;
+
     this.garmentLayer = document.createElement('canvas');
+    this.garmentLayer.width = initialWidth;
+    this.garmentLayer.height = initialHeight;
     const gctx = this.garmentLayer.getContext('2d');
     if (!gctx) throw new Error('Canvas 2D context unavailable (garment layer)');
     this.garmentCtx = gctx;
   }
 
   resize(width: number, height: number): void {
-    if (this.canvas.width !== width || this.canvas.height !== height) {
-      this.canvas.width = width;
-      this.canvas.height = height;
+    const validWidth = Math.max(1, Math.round(width || 1280));
+    const validHeight = Math.max(1, Math.round(height || 720));
+    if (this.canvas.width !== validWidth || this.canvas.height !== validHeight) {
+      this.canvas.width = validWidth;
+      this.canvas.height = validHeight;
     }
-    if (this.garmentLayer.width !== width || this.garmentLayer.height !== height) {
-      this.garmentLayer.width = width;
-      this.garmentLayer.height = height;
+    if (this.garmentLayer.width !== validWidth || this.garmentLayer.height !== validHeight) {
+      this.garmentLayer.width = validWidth;
+      this.garmentLayer.height = validHeight;
     }
+  }
+
+  getWidth(): number {
+    return this.canvas.width;
+  }
+
+  getHeight(): number {
+    return this.canvas.height;
   }
 
   setMirrored(mirrored: boolean): void {
@@ -116,6 +133,9 @@ export class Renderer {
     poseInferenceMs?: number;
     segmentationInferenceMs?: number;
     inferenceFps?: number;
+    frameAgeMs?: number;
+    droppedFrames?: number;
+    batteryInfo?: string;
     physicsParticles?: { x: number; y: number }[];
   }): void {
     const { ctx, canvas } = this;
@@ -157,6 +177,9 @@ export class Renderer {
         frame.segmentationInferenceMs ?? 0
       ),
       inferenceFps: frame.inferenceFps ?? this.lastMetrics.inferenceFps,
+      frameAgeMs: frame.frameAgeMs ?? this.lastMetrics.frameAgeMs,
+      droppedFrames: frame.droppedFrames ?? this.lastMetrics.droppedFrames,
+      batteryInfo: frame.batteryInfo ?? this.lastMetrics.batteryInfo,
       heapMb: readHeapMb(),
     };
   }
@@ -233,30 +256,78 @@ export class Renderer {
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.clearRect(0, 0, width, height);
 
-    // Mesh: per-triangle affine texture map. One transform + drawImage per
-    // triangle — GPU path, no CPU pixel math.
-    const epsilon = 0.37; // overlap to hide hairline seams between triangles
+    // Mesh: per-triangle affine texture map. Clip to target triangle + transform
+    // texture quad — GPU accelerated, seamless draping.
+    const epsilon = 0.5; // hairline overlap to prevent antialiasing seams
     for (const tri of warp.triangles) {
+      const [t0, t1, t2] = tri.target;
       const m = affineFromTriangles(tri.source, tri.target);
       if (!m) continue;
+
+      // Centroid expansion for seamless triangle boundary without distortion
+      const cx = (t0.x + t1.x + t2.x) / 3;
+      const cy = (t0.y + t1.y + t2.y) / 3;
+      const d0 = Math.hypot(t0.x - cx, t0.y - cy) || 1;
+      const d1 = Math.hypot(t1.x - cx, t1.y - cy) || 1;
+      const d2 = Math.hypot(t2.x - cx, t2.y - cy) || 1;
+      const ex0 = t0.x + ((t0.x - cx) / d0) * epsilon;
+      const ey0 = t0.y + ((t0.y - cy) / d0) * epsilon;
+      const ex1 = t1.x + ((t1.x - cx) / d1) * epsilon;
+      const ey1 = t1.y + ((t1.y - cy) / d1) * epsilon;
+      const ex2 = t2.x + ((t2.x - cx) / d2) * epsilon;
+      const ey2 = t2.y + ((t2.y - cy) / d2) * epsilon;
+
       g.save();
+      g.beginPath();
+      g.moveTo(ex0, ey0);
+      g.lineTo(ex1, ey1);
+      g.lineTo(ex2, ey2);
+      g.closePath();
+      g.clip();
+
       g.transform(m.a, m.b, m.c, m.d, m.e, m.f);
-      const [p0, p1, p2] = tri.source;
-      g.drawImage(
-        garment.texture,
-        p0.x, p0.y,
-        p1.x - p0.x, p1.y - p0.y
-      );
+      g.drawImage(garment.texture, 0, 0);
       g.restore();
-      void p2;
-      void epsilon;
     }
 
-    // Occlusion: subtract capsules from the garment layer only.
+    // 3a. Realistic Drape Shading & Seam Ambient Occlusion
+    const topY = warp.center.y - 120;
+    const botY = warp.center.y + 240;
+    g.save();
+    g.globalCompositeOperation = 'source-atop';
+
+    // Vertical top-down lighting falloff
+    const drapeGrad = g.createLinearGradient(0, Math.max(0, topY), 0, Math.min(height, botY));
+    drapeGrad.addColorStop(0, 'rgba(255, 255, 255, 0.12)'); // subtle rim light on shoulders
+    drapeGrad.addColorStop(0.3, 'rgba(255, 255, 255, 0)');
+    drapeGrad.addColorStop(0.8, 'rgba(0, 0, 0, 0.08)');
+    drapeGrad.addColorStop(1, 'rgba(0, 0, 0, 0.22)'); // shadow at hem/hips
+    g.fillStyle = drapeGrad;
+    g.fillRect(0, 0, width, height);
+
+    // Procedural fold / wrinkle highlights when enabled
+    if (this.options.debug || true) {
+      g.strokeStyle = 'rgba(0, 0, 0, 0.06)';
+      g.lineWidth = 3;
+      for (let w = 0; w < 3; w++) {
+        const wy = warp.center.y + (w - 1) * 36;
+        g.beginPath();
+        g.moveTo(warp.center.x - 70, wy - 4);
+        g.quadraticCurveTo(warp.center.x, wy + 8, warp.center.x + 70, wy - 4);
+        g.stroke();
+      }
+    }
+    g.restore();
+
+    // 3b. Soft Occlusion: subtract capsules from the garment layer with feathered edges.
     if (occlusion && occlusion.capsules.length > 0) {
       g.save();
       g.globalCompositeOperation = 'destination-out';
       g.fillStyle = 'rgba(0,0,0,1)';
+      // Feathered soft boundary: eliminates harsh digital cookie-cutter punch lines
+      if ('filter' in g) {
+        g.filter = 'blur(6px)';
+      }
       for (const cap of occlusion.capsules) {
         const dx = cap.b.x - cap.a.x;
         const dy = cap.b.y - cap.a.y;

@@ -3,8 +3,12 @@ AI Fashion Mirror — Production Backend API.
 Built with FastAPI & Pydantic.
 """
 
+import logging
+import os
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+
+logger = logging.getLogger(__name__)
 
 from backend.models import (
     HealthResponse,
@@ -28,9 +32,19 @@ app = FastAPI(
 )
 
 # Cross-Origin Resource Sharing (CORS) configuration
+ALLOWED_ORIGINS = [
+    orig.strip()
+    for orig in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000",
+    ).split(",")
+    if orig.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows frontend in dev & staging
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -66,9 +80,10 @@ async def extract_product(payload: UrlExtractRequest):
     except HTTPException:
         raise
     except Exception as exc:
+        logger.error("Product extraction internal error: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Product extraction failed: {str(exc)}",
+            detail="Product extraction failed. Please check the URL and try again.",
         )
 
 

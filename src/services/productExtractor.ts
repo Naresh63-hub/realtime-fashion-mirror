@@ -9,6 +9,8 @@
 import type { ExtractedProduct } from '../types';
 import { ClothingCategory } from '../types';
 
+import { StorageService } from './storageService';
+
 export const SUPPORTED_RETAILERS = [
   { name: 'Amazon', domain: 'amazon', example: 'https://www.amazon.in/dp/B08XYZ1234' },
   { name: 'Myntra', domain: 'myntra', example: 'https://www.myntra.com/shirts/roadster-shirt/12345/buy' },
@@ -18,7 +20,73 @@ export const SUPPORTED_RETAILERS = [
   { name: 'Shopify / Independent Stores', domain: 'myshopify', example: 'https://brand.myshopify.com/products/linen-tee' },
 ];
 
-const BLOCKED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '169.254.169.254'];
+export function getBackendApiUrl(): string {
+  try {
+    const custom = StorageService.getPreferences()?.cloudVtonApiUrl?.trim();
+    if (custom && (custom.startsWith('http://') || custom.startsWith('https://'))) {
+      return custom.replace(/\/+$/, '');
+    }
+  } catch {
+    // Fall back to env or default
+  }
+  const envUrl = (import.meta.env.VITE_BACKEND_API_URL as string)?.trim();
+  if (envUrl && (envUrl.startsWith('http://') || envUrl.startsWith('https://'))) {
+    return envUrl.replace(/\/+$/, '');
+  }
+  return 'http://127.0.0.1:8000';
+}
+
+function isPrivateOrLocalHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().trim().replace(/^\[|\]$/g, '');
+
+  if (
+    host === 'localhost' ||
+    host === '0.0.0.0' ||
+    host === '::' ||
+    host === '::1' ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal') ||
+    host.endsWith('.lan') ||
+    host.endsWith('.corp')
+  ) {
+    return true;
+  }
+
+  // IPv6 ULA (fc00::/7) or link-local (fe80::/10) or loopback
+  if (
+    host.startsWith('fc') ||
+    host.startsWith('fd') ||
+    host.startsWith('fe8') ||
+    host.startsWith('fe9') ||
+    host.startsWith('fea') ||
+    host.startsWith('feb') ||
+    host.startsWith('::ffff:127.') ||
+    host.startsWith('::ffff:10.') ||
+    host.startsWith('::ffff:192.168.')
+  ) {
+    return true;
+  }
+
+  // Dotted-decimal IPv4
+  const ipv4Parts = host.split('.');
+  if (ipv4Parts.length === 4 && ipv4Parts.every((p) => /^\d+$/.test(p))) {
+    const [a, b] = ipv4Parts.map(Number);
+    if (a === 127) return true; // Loopback
+    if (a === 10) return true; // 10.0.0.0/8
+    if (a === 0) return true; // 0.0.0.0/8
+    if (a === 169 && b === 254) return true; // Link-local
+    if (a === 192 && b === 168) return true; // 192.168.0.0/16
+    if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
+    if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+  }
+
+  // Numeric or hex IP representation
+  if (/^(0x[0-9a-f]+|\d+)$/i.test(host)) {
+    return true;
+  }
+
+  return false;
+}
 
 export function validateProductUrl(url: string): { valid: boolean; error?: string } {
   if (!url || typeof url !== 'string' || !url.trim()) {
@@ -37,15 +105,7 @@ export function validateProductUrl(url: string): { valid: boolean; error?: strin
     return { valid: false, error: 'Only HTTP and HTTPS URLs are allowed.' };
   }
 
-  const host = parsed.hostname.toLowerCase();
-  if (
-    BLOCKED_HOSTS.includes(host) ||
-    host.endsWith('.local') ||
-    host.endsWith('.internal') ||
-    host.startsWith('10.') ||
-    host.startsWith('192.168.') ||
-    host.startsWith('172.16.')
-  ) {
+  if (isPrivateOrLocalHost(parsed.hostname)) {
     return { valid: false, error: 'Security restriction: Access to internal or private addresses is blocked (SSRF Protection).' };
   }
 
@@ -83,11 +143,17 @@ export async function extractProductFromUrl(url: string): Promise<ExtractedProdu
 
   // 1. Try Backend API first
   try {
-    const apiRes = await fetch('http://localhost:8000/api/products/extract', {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const backendUrl = getBackendApiUrl();
+
+    const apiRes = await fetch(`${backendUrl}/api/products/extract`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (apiRes.ok) {
       const data = await apiRes.json();

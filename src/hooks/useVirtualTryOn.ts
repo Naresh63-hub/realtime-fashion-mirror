@@ -40,6 +40,7 @@ import { ClothingEngine } from '../clothing/ClothingEngine';
 import { OcclusionEngine } from '../occlusion/OcclusionEngine';
 import { Renderer } from '../rendering/Renderer';
 import { APP_CONFIG } from '../config';
+import { StorageService } from '../services/storageService';
 import { logger } from '../utils/logger';
 
 interface PipelineRefs {
@@ -122,8 +123,24 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
   const segmentationInferenceMsRef = useRef(0);
   const mirrorRef = useRef(true);
   const segDebugRef = useRef(APP_CONFIG.RENDERING.SHOW_MASK);
-  const debugModeRef = useRef(APP_CONFIG.RENDERING.ENABLE_DEBUG_MODE);
   const physicsLastStepRef = useRef<number>(0);
+  const batteryInfoRef = useRef<string | undefined>(undefined);
+
+  // Monitor device battery if supported (for mobile/thermal diagnostics)
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'getBattery' in navigator) {
+      (navigator as any).getBattery().then((battery: any) => {
+        const update = () => {
+          const level = Math.round(battery.level * 100);
+          const charging = battery.charging ? ' (charging)' : '';
+          batteryInfoRef.current = `Battery: ${level}%${charging}`;
+        };
+        update();
+        battery.addEventListener('levelchange', update);
+        battery.addEventListener('chargingchange', update);
+      }).catch(() => {});
+    }
+  }, []);
 
   // Keep the frame loop's garment reference in sync without re-rendering.
   useEffect(() => {
@@ -185,10 +202,11 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
       let pose: Pose | null = null;
       const sinceInference = timestamp - lastInferenceRef.current;
       const minInferenceInterval = effectiveIntervalRef.current;
+      const frameCaptureTime = performance.now();
       if (sinceInference >= minInferenceInterval) {
         lastInferenceRef.current = timestamp;
         const t0 = performance.now();
-        pose = pipeline.pose.detectForVideo(video, timestamp);
+        pose = pipeline.pose.detectForVideo(video, timestamp, frameCaptureTime);
         poseInferenceMsRef.current = performance.now() - t0;
 
         inferenceCountRef.current++;
@@ -204,15 +222,19 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
       }
 
       if (pose) {
-        // Smoothing + plausibility gate.
+        // Smoothing + plausibility gate (reads user preference with env fallback)
+        const prefs = StorageService.getPreferences();
+        const smoothing = prefs?.smoothingFactor ?? APP_CONFIG.TRACKING.SMOOTHING_FACTOR;
+        const minConfidence = prefs?.confidenceThreshold ?? APP_CONFIG.TRACKING.TRACKING_CONFIDENCE;
+
         pose.landmarks = smoothLandmarks(
           smoothedLandmarksRef.current,
           pose.landmarks,
-          APP_CONFIG.TRACKING.SMOOTHING_FACTOR
+          smoothing
         );
         smoothedLandmarksRef.current = pose.landmarks;
 
-        const confident = pose.confidence >= APP_CONFIG.TRACKING.TRACKING_CONFIDENCE;
+        const confident = pose.confidence >= minConfidence;
         if (confident) {
           lastPoseRef.current = pose;
           lastPoseTimeRef.current = timestamp;
@@ -239,6 +261,10 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
       const activeGarment = garmentRef.current;
       const frameWidth = video.videoWidth || APP_CONFIG.CAMERA.DEFAULT_WIDTH;
       const frameHeight = video.videoHeight || APP_CONFIG.CAMERA.DEFAULT_HEIGHT;
+
+      if (renderer.getWidth() !== frameWidth || renderer.getHeight() !== frameHeight) {
+        renderer.resize(frameWidth, frameHeight);
+      }
 
       if (pose && activeGarment) {
         warpRef.current = pipeline.clothing.calculateWarp(
@@ -277,6 +303,9 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
         poseInferenceMs: poseInferenceMsRef.current,
         segmentationInferenceMs: segmentationInferenceMsRef.current,
         inferenceFps: inferenceFpsRef.current,
+        frameAgeMs: performance.now() - frameCaptureTime,
+        droppedFrames: pipeline.pose.getDroppedFrames(),
+        batteryInfo: batteryInfoRef.current,
       });
 
       // ---- Adaptive cadence bookkeeping ----
@@ -346,12 +375,26 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
 
     try {
       setError(null);
+      const prefs = StorageService.getPreferences();
+      const resolutionMap: Record<string, { width: number; height: number }> = {
+        '480p': { width: 640, height: 480 },
+        '720p': { width: 1280, height: 720 },
+        '1080p': { width: 1920, height: 1080 },
+      };
+      const targetRes = resolutionMap[prefs.cameraResolution] || { width: 1280, height: 720 };
+      refs.current.camera.setConfig({
+        width: targetRes.width,
+        height: targetRes.height,
+        facingMode: prefs.preferredFacingMode || 'user',
+      });
+
       await refs.current.camera.start(video);
       videoElRef.current = video;
 
       const facingUser = refs.current.camera.getFacingMode() === 'user';
-      mirrorRef.current = facingUser;
-      rendererRefSetMirrored(refs.current.renderer, facingUser);
+      const shouldMirror = prefs.mirrorUserCamera ? facingUser : false;
+      mirrorRef.current = shouldMirror;
+      rendererRefSetMirrored(refs.current.renderer, shouldMirror);
 
       setCameraActive(true);
       startLoop();
