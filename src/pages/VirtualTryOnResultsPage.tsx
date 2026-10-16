@@ -18,6 +18,7 @@ import {
   Camera,
   UploadCloud,
   ArrowRight,
+  Share2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
@@ -198,6 +199,84 @@ export const VirtualTryOnResultsPage: React.FC = () => {
     toast.info('Added to outfit comparison list.');
     navigate('compare');
   };
+
+  const [isGeneratingPhotoreal, setIsGeneratingPhotoreal] = useState(false);
+
+  const handleGeneratePhotorealStill = async () => {
+    if (!personImg) return;
+    try {
+      setIsGeneratingPhotoreal(true);
+      toast.loading('✨ Synthesizing photoreal still with enhanced drape & lighting...', { id: 'photoreal-still' });
+      
+      const updated = await VirtualTryOnService.renderClientTryOn(
+        personImg,
+        garment.imageUrl,
+        garment.category,
+        {
+          offsetY,
+          offsetX,
+          scale,
+          widthFactor,
+          rotation,
+          opacity: 1.0,
+          framingPreset,
+        }
+      );
+
+      if (updated) {
+        setCurrentResultImg(updated);
+        if (lastResult) {
+          setLastResult({
+            ...lastResult,
+            resultImageUrl: updated,
+          });
+        }
+        toast.success('✨ Photoreal still synthesized successfully!', { id: 'photoreal-still' });
+      }
+    } catch {
+      toast.error('Photoreal still generation failed.', { id: 'photoreal-still' });
+    } finally {
+      setIsGeneratingPhotoreal(false);
+    }
+  };
+
+  const handleShareLook = () => {
+    const params = new URLSearchParams({
+      garment: garment.id,
+      scale: String(scale),
+      width: String(widthFactor),
+      y: String(offsetY),
+    });
+    const shareUrl = `${window.location.origin}${window.location.pathname}#/results?${params.toString()}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        toast.success('🔗 Shareable look link copied to clipboard!');
+      }).catch(() => {
+        toast.info(`Look link: ${shareUrl}`);
+      });
+    } else {
+      toast.info(`Look link: ${shareUrl}`);
+    }
+  };
+
+  // Restore deep-link parameters on mount
+  useEffect(() => {
+    try {
+      const hash = window.location.hash;
+      if (hash.includes('?')) {
+        const query = hash.split('?')[1];
+        const params = new URLSearchParams(query);
+        const s = params.get('scale');
+        const w = params.get('width');
+        const y = params.get('y');
+        if (s) setScale(Number(s));
+        if (w) setWidthFactor(Number(w));
+        if (y) setOffsetY(Number(y));
+      }
+    } catch {
+      // Ignore URL parsing errors
+    }
+  }, []);
 
   // If no try-on has been generated yet, show prompt instead of demo images
   if (!lastResult?.personImageUrl) {
@@ -611,9 +690,9 @@ export const VirtualTryOnResultsPage: React.FC = () => {
             </div>
           )}
 
-          {/* Realistic Simulation Disclaimer */}
+          {/* Fit Honesty & Simulation Disclaimer */}
           <p className="text-[11px] text-gray-400 leading-relaxed bg-white/5 border border-white/5 rounded-2xl p-3.5 backdrop-blur-md">
-            ⚠️ <strong>Virtual Try-On Preview:</strong> This visualization simulates garment placement and body drape using computer vision and geometric mesh warping. Real-world fabric stretch, drape, and texture may vary.
+            ℹ️ <strong>Fit Honesty & Visual Approximation:</strong> This try-on is an automated geometric body drape preview, not an exact tailoring measurement. Real-world fabric stretch and drape may vary. Use the Fit Studio sliders to evaluate tight ↔ relaxed silhouette preferences.
           </p>
         </div>
 
@@ -637,6 +716,17 @@ export const VirtualTryOnResultsPage: React.FC = () => {
 
             {/* Action Buttons */}
             <div className="space-y-2 pt-2 border-t border-white/10">
+              {/* Photoreal Still Generator */}
+              <button
+                type="button"
+                onClick={handleGeneratePhotorealStill}
+                disabled={isGeneratingPhotoreal}
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 py-3 text-xs font-bold text-amber-300 hover:from-amber-500/30 hover:to-orange-500/30 transition shadow-lg shadow-amber-900/20 disabled:opacity-50"
+              >
+                <Sparkles className="h-4 w-4 text-amber-400" />
+                <span>{isGeneratingPhotoreal ? 'Synthesizing...' : '✨ Generate Photoreal Still'}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleSaveLook}
@@ -648,8 +738,17 @@ export const VirtualTryOnResultsPage: React.FC = () => {
 
               <button
                 type="button"
+                onClick={handleShareLook}
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
+              >
+                <Share2 className="h-4 w-4 text-violet-400" />
+                <span>Share Look (Privacy-Safe Link)</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={handleDownload}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3 text-xs font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
               >
                 <Download className="h-4 w-4" />
                 <span>Download Result Image</span>
@@ -658,7 +757,7 @@ export const VirtualTryOnResultsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleCompareOutfits}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3 text-xs font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
               >
                 <Columns2 className="h-4 w-4" />
                 <span>Compare Outfits</span>

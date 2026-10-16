@@ -10,6 +10,7 @@ import type { ExtractedProduct } from '../types';
 import { ClothingCategory } from '../types';
 
 import { StorageService } from './storageService';
+import { APP_CONFIG } from '../config';
 
 export const SUPPORTED_RETAILERS = [
   { name: 'Amazon', domain: 'amazon', example: 'https://www.amazon.in/dp/B08XYZ1234' },
@@ -33,7 +34,7 @@ export function getBackendApiUrl(): string {
   if (envUrl && (envUrl.startsWith('http://') || envUrl.startsWith('https://'))) {
     return envUrl.replace(/\/+$/, '');
   }
-  return 'http://127.0.0.1:8000';
+  return (APP_CONFIG.API.BASE_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
 }
 
 function isPrivateOrLocalHost(hostname: string): boolean {

@@ -80,7 +80,8 @@ def get_job_status(job_id: str) -> Optional[TryOnJobResponse]:
             job.status = "succeeded"
             job.progress = 100
             job.updated_at = time.time()
-            job.result_image_url = job.person_image_url
+            if not job.result_image_url:
+                job.result_image_url = job.garment_image_url
         elif elapsed >= 1.5:
             job.progress = 65
             job.updated_at = time.time()

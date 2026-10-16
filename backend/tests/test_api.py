@@ -111,3 +111,17 @@ def test_tryon_job_invalid_input():
         },
     )
     assert resp.status_code == 400
+
+
+def test_tryon_job_ssrf_protection():
+    resp = client.post(
+        "/api/tryon/jobs",
+        json={
+            "person_image": "http://169.254.169.254/latest/meta-data",
+            "garment_image": "/garments/shirt.svg",
+            "garment_name": "Tee",
+        },
+    )
+    assert resp.status_code == 400
+    assert "forbidden" in resp.json()["detail"].lower() or "restricted" in resp.json()["detail"].lower()
+

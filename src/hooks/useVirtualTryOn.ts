@@ -123,6 +123,7 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
   const segmentationInferenceMsRef = useRef(0);
   const mirrorRef = useRef(true);
   const segDebugRef = useRef(APP_CONFIG.RENDERING.SHOW_MASK);
+  const debugModeRef = useRef(APP_CONFIG.RENDERING.ENABLE_DEBUG_MODE);
   const physicsLastStepRef = useRef<number>(0);
   const batteryInfoRef = useRef<string | undefined>(undefined);
 

@@ -95,23 +95,31 @@ export class ImagePoseService {
       const mouthL = landmarks[LandmarkIndex.MOUTH_LEFT];
       const mouthR = landmarks[LandmarkIndex.MOUTH_RIGHT];
 
-      const shoulderSpan = Math.hypot(rs.x - ls.x, rs.y - ls.y);
+      const shoulderSpan = Math.hypot(ls.x - rs.x, ls.y - rs.y);
       const shoulderMidX = (ls.x + rs.x) / 2;
       const shoulderMidY = (ls.y + rs.y) / 2;
-      const angleRad = Math.atan2(rs.y - ls.y, rs.x - ls.x);
-      const rotationDeg = (angleRad * 180) / Math.PI;
 
-      // Estimate chin position
+      // In screen coordinates (x left->right, y top->down), screen-left shoulder is rs (landmark 12)
+      // and screen-right shoulder is ls (landmark 11). Vector rs->ls points towards +x.
+      // Angle represents deviation from horizontal (0 deg = perfectly level shoulders).
+      let angleRad = Math.atan2(ls.y - rs.y, ls.x - rs.x);
+      if (Math.abs(angleRad) > Math.PI / 2) {
+        angleRad = angleRad > 0 ? angleRad - Math.PI : angleRad + Math.PI;
+      }
+      let rotationDeg = (angleRad * 180) / Math.PI;
+      rotationDeg = Math.max(-35, Math.min(35, rotationDeg));
+
+      // Estimate chin position from nose and mouth landmarks
       const mouthY = mouthL && mouthR ? (mouthL.y + mouthR.y) / 2 : (nose?.y ?? 0.2) + 0.08;
-      const chinY = mouthY + Math.max(0.04, (mouthY - (nose?.y ?? 0.2)) * 0.8);
+      const chinY = mouthY + Math.max(0.03, (mouthY - (nose?.y ?? 0.2)) * 0.7);
 
-      // Collar should ALWAYS sit at the clavicle / base of the neck, below chin
-      let collarY = Math.max(shoulderMidY - 0.02, chinY + 0.03);
+      // Collar notch sits at the suprasternal notch at the base of the neck, below the chin
+      let collarY = Math.max(shoulderMidY + 0.012, chinY + 0.02);
 
       // Distinguish portrait / bust shot from full body:
       // In close-up portraits (like headshots), the nose is typically below y = 0.22,
-      // and shoulders are in the lower portion (y > 0.55).
-      const isPortrait = (nose?.y ?? 0) > 0.2 || shoulderMidY > 0.5;
+      // and shoulders are in the lower portion (y > 0.45).
+      const isPortrait = (nose?.y ?? 0) > 0.2 || shoulderMidY > 0.45;
 
       // Torso height estimation
       let torsoHeight = 0.45;
@@ -141,23 +149,22 @@ export class ImagePoseService {
     }
 
     // Heuristic Fallback when pose detection fails (e.g. wasm unavailable or illustration)
-    // For portrait photos (headshots), the head and face fill top 50-60%.
-    // Shoulders start at ~0.65.
-    // For landscape or full body, shoulders start around 0.26.
+    // For portrait photos (headshots), the head and face fill the top portion, shoulders start at ~0.50.
+    // For full body photos, shoulders start around ~0.24.
     const isLikelyPortrait = isTall;
-    const fallbackCollarY = isLikelyPortrait ? 0.62 : 0.28;
-    const fallbackShoulderDist = isLikelyPortrait ? 0.42 : 0.26;
+    const fallbackCollarY = isLikelyPortrait ? 0.50 : 0.24;
+    const fallbackShoulderDist = isLikelyPortrait ? 0.40 : 0.26;
 
     return {
       hasPose: false,
       isPortraitOrHeadshot: isLikelyPortrait,
       landmarks: null,
       shoulderMidX: 0.5,
-      shoulderMidY: fallbackCollarY + 0.03,
+      shoulderMidY: fallbackCollarY + 0.02,
       collarY: fallbackCollarY,
       shoulderDistance: fallbackShoulderDist,
       rotationDeg: 0,
-      torsoHeight: isLikelyPortrait ? 0.35 : 0.45,
+      torsoHeight: isLikelyPortrait ? 0.40 : 0.50,
       recommendedScale: 1.0,
       confidence: 0.5,
     };

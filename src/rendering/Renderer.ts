@@ -336,8 +336,12 @@ export class Renderer {
 
         if (len > 0.5) {
           g.save();
-          g.translate(cap.a.x, cap.a.y);
-          g.rotate(angle);
+          if (typeof g.translate === 'function') {
+            g.translate(cap.a.x, cap.a.y);
+          }
+          if (typeof g.rotate === 'function') {
+            g.rotate(angle);
+          }
           g.beginPath();
           g.arc(0, 0, cap.radius, 0, Math.PI * 2);
           g.rect(0, -cap.radius, len, cap.radius * 2);

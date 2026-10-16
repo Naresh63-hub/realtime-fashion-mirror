@@ -244,54 +244,89 @@ export class VirtualTryOnService {
             }
 
             // 1. Draw original person photo base layer
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(personImg, 0, 0, canvas.width, canvas.height);
 
             // 2. Perform anatomical body landmark analysis
             const analysis = await ImagePoseService.analyzeImage(personImg);
 
-            // Garment aspect ratio
+            // Garment aspect ratio (height / width)
             const garmentRatio =
               (garmentImg.naturalHeight || 700) / (garmentImg.naturalWidth || 600);
 
-            // Calculate base dimensions from detected shoulders
-            let baseWidth = (analysis.shoulderDistance * canvas.width) / 0.40;
+            // Garment silhouette metrics: fraction of total image width occupied by outer shoulder seams,
+            // and vertical depth from the top to the collar notch.
+            let garmentShoulderRatio = 0.65;
+            let collarNotchFraction = 0.13;
+
+            if (category === CC.KURTI || category === CC.DRESS) {
+              garmentShoulderRatio = 0.68;
+              collarNotchFraction = 0.09;
+            } else if (category === CC.JACKET) {
+              garmentShoulderRatio = 0.70;
+              collarNotchFraction = 0.15;
+            } else if (category === CC.TOP) {
+              garmentShoulderRatio = 0.64;
+              collarNotchFraction = 0.15;
+            } else if (category === CC.SHIRT) {
+              garmentShoulderRatio = 0.67;
+              collarNotchFraction = 0.13;
+            }
+
+            // Calculate base dimensions:
+            // Match the garment's outer shoulder seam distance to the user's detected shoulder distance
+            let baseWidth = (analysis.shoulderDistance * canvas.width) / garmentShoulderRatio;
 
             // Apply category sizing adjustments
             if (category === CC.KURTI || category === CC.DRESS) {
-              baseWidth *= 1.10;
+              baseWidth *= 1.05;
             } else if (category === CC.JACKET) {
-              baseWidth *= 1.15;
+              baseWidth *= 1.08;
             } else if (category === CC.TOP) {
-              baseWidth *= 0.96;
+              baseWidth *= 0.98;
             }
 
             let baseHeight = baseWidth * garmentRatio;
 
-            // Collar / Clavicle anchor: garment collar notch sits at ~8% from top of garment graphic
-            const collarX = analysis.shoulderMidX * canvas.width;
-            const collarY = analysis.collarY * canvas.height;
-
-            let baseX = collarX - baseWidth / 2;
-            let baseY = collarY - baseHeight * 0.08;
+            // Collar / Clavicle anchor: garment collar notch sits at the base of the neck
+            let collarX = analysis.shoulderMidX * canvas.width;
+            let collarY = analysis.collarY * canvas.height;
             let baseAngle = analysis.rotationDeg;
 
-            // Apply framing presets if requested
-            if (fitOptions?.framingPreset === 'portrait') {
-              baseWidth = canvas.width * 0.88;
-              baseHeight = baseWidth * garmentRatio;
-              baseX = (canvas.width - baseWidth) / 2;
-              baseY = canvas.height * 0.58;
-            } else if (fitOptions?.framingPreset === 'full-body') {
-              baseWidth = canvas.width * 0.54;
-              baseHeight = baseWidth * garmentRatio;
-              baseX = (canvas.width - baseWidth) / 2;
-              baseY = canvas.height * 0.24;
-            } else if (fitOptions?.framingPreset === 'half-body') {
-              baseWidth = canvas.width * 0.70;
-              baseHeight = baseWidth * garmentRatio;
-              baseX = (canvas.width - baseWidth) / 2;
-              baseY = canvas.height * 0.40;
+            // Adapt framing presets gracefully without discarding real landmarks
+            const preset = fitOptions?.framingPreset ?? 'auto';
+            if (preset === 'portrait') {
+              if (analysis.hasPose) {
+                baseWidth *= 1.04;
+                baseHeight = baseWidth * garmentRatio;
+              } else {
+                baseWidth = canvas.width * 0.68;
+                baseHeight = baseWidth * garmentRatio;
+                collarX = canvas.width * 0.5;
+                collarY = canvas.height * 0.48;
+              }
+            } else if (preset === 'full-body') {
+              if (analysis.hasPose) {
+                baseWidth *= 0.98;
+                baseHeight = baseWidth * garmentRatio;
+              } else {
+                baseWidth = canvas.width * 0.42;
+                baseHeight = baseWidth * garmentRatio;
+                collarX = canvas.width * 0.5;
+                collarY = canvas.height * 0.24;
+              }
+            } else if (preset === 'half-body') {
+              if (!analysis.hasPose) {
+                baseWidth = canvas.width * 0.56;
+                baseHeight = baseWidth * garmentRatio;
+                collarX = canvas.width * 0.5;
+                collarY = canvas.height * 0.36;
+              }
             }
+
+            let baseX = collarX - baseWidth / 2;
+            let baseY = collarY - baseHeight * collarNotchFraction;
 
             // 3. Apply user fit adjustments (from the interactive fitting studio)
             const scale = fitOptions?.scale ?? 1.0;
@@ -308,25 +343,37 @@ export class VirtualTryOnService {
 
             // 4. Realistic compositing with rotation & shadow
             ctx.save();
+            const cx = targetX + targetWidth / 2;
+            const cy = targetY + targetHeight / 2;
+
             if (Math.abs(rotation) > 0.05) {
-              const cx = targetX + targetWidth / 2;
-              const cy = targetY + targetHeight / 2;
               ctx.translate(cx, cy);
               ctx.rotate((rotation * Math.PI) / 180);
               ctx.translate(-cx, -cy);
             }
 
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.32)';
-            ctx.shadowBlur = 18;
-            ctx.shadowOffsetY = 8;
+            // Soft body drop shadow for natural depth
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.28)';
+            ctx.shadowBlur = 14;
+            ctx.shadowOffsetY = 6;
             ctx.globalAlpha = opacity;
             ctx.drawImage(garmentImg, targetX, targetY, targetWidth, targetHeight);
             ctx.restore();
 
-            // 5. Subtle ambient lighting blend to match photographic tone
+            // 5. Ambient drape lighting falloff to match photographic lighting
             ctx.save();
+            if (Math.abs(rotation) > 0.05) {
+              ctx.translate(cx, cy);
+              ctx.rotate((rotation * Math.PI) / 180);
+              ctx.translate(-cx, -cy);
+            }
             ctx.globalCompositeOperation = 'soft-light';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+            const drapeGrad = ctx.createLinearGradient(0, targetY, 0, targetY + targetHeight);
+            drapeGrad.addColorStop(0, 'rgba(255, 255, 255, 0.12)'); // rim light on shoulder seams
+            drapeGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0)');
+            drapeGrad.addColorStop(0.85, 'rgba(0, 0, 0, 0.08)');
+            drapeGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.20)'); // bottom hem falloff shadow
+            ctx.fillStyle = drapeGrad;
             ctx.fillRect(targetX, targetY, targetWidth, targetHeight);
             ctx.restore();
 

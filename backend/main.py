@@ -95,6 +95,8 @@ def submit_tryon_job(payload: TryOnJobCreateRequest):
     try:
         job = create_tryon_job(payload)
         return job
+    except HTTPException:
+        raise
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

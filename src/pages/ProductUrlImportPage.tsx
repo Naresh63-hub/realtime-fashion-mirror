@@ -241,7 +241,13 @@ export const ProductUrlImportPage: React.FC = () => {
                 <span>Product Extracted Successfully</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-bold text-white mt-2">{extracted.title}</h2>
-              <p className="text-xs text-violet-400 font-semibold">{extracted.brand} • {extracted.retailer}</p>
+              <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                <p className="text-xs text-violet-400 font-semibold">{extracted.brand} • {extracted.retailer}</p>
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-300 border border-amber-500/30">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>Imported — Quality Unverified</span>
+                </span>
+              </div>
             </div>
             {extracted.price && (
               <div className="sm:text-right">

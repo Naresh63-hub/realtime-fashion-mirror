@@ -20,12 +20,14 @@ import { useTranslation } from '../i18n';
 import { useAnnounce } from '../utils/a11yAnnouncer';
 import { useApp } from '../context/AppContext';
 import { StorageService } from '../services/storageService';
+import { VirtualTryOnService } from '../services/virtualTryOnService';
+import { FULL_PRODUCT_CATALOG } from '../services/garmentCatalog';
 import { ClothingCategory } from '../types';
 
 export const LiveCameraPage: React.FC = () => {
   const { t } = useTranslation();
   const { announce } = useAnnounce();
-  const { selectedGarment, navigate, refreshSavedLooks } = useApp();
+  const { selectedGarment, navigate, refreshSavedLooks, setLastResult } = useApp();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -104,6 +106,49 @@ export const LiveCameraPage: React.FC = () => {
     refreshSavedLooks();
     toast.success('Look saved to your private gallery!');
   }, [captured, garment, refreshSavedLooks]);
+
+  const [isGeneratingPhotoreal, setIsGeneratingPhotoreal] = useState(false);
+
+  const handleGeneratePhotorealStill = useCallback(async () => {
+    if (!captured) return;
+    try {
+      setIsGeneratingPhotoreal(true);
+      toast.loading('✨ Synthesizing photoreal still from live capture...', { id: 'live-photoreal' });
+      const currentGarment = garment || (selectedGarment as any) || FULL_PRODUCT_CATALOG[0];
+      const job = await VirtualTryOnService.generateTryOn({
+        personImage: captured,
+        garmentImage: currentGarment.imageUrl,
+        garmentName: currentGarment.name,
+        category: currentGarment.category,
+        modelMode: 'cloud-genai',
+      });
+
+      let status = job.status;
+      let attempts = 0;
+      while (status !== 'succeeded' && status !== 'failed' && attempts < 15) {
+        await new Promise((res) => setTimeout(res, 400));
+        const updated = await VirtualTryOnService.getJobStatus(job.id);
+        status = updated.status;
+        attempts++;
+      }
+
+      if (status === 'succeeded') {
+        const result = await VirtualTryOnService.retrieveResult(job.id);
+        if (result) {
+          setLastResult(result);
+          toast.success('✨ Photoreal still ready! Routing to Fit Studio...', { id: 'live-photoreal' });
+          setCaptured(null);
+          navigate('results');
+        }
+      } else {
+        toast.error('Photoreal generation timed out.', { id: 'live-photoreal' });
+      }
+    } catch {
+      toast.error('Photoreal still generation failed.', { id: 'live-photoreal' });
+    } finally {
+      setIsGeneratingPhotoreal(false);
+    }
+  }, [captured, garment, selectedGarment, setLastResult, navigate]);
 
   const handleSwitchCamera = useCallback(async () => {
     await switchCamera();
@@ -344,6 +389,15 @@ export const LiveCameraPage: React.FC = () => {
                 className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-gray-300 hover:bg-white/10 transition"
               >
                 {t('common.close')}
+              </button>
+              <button
+                type="button"
+                onClick={handleGeneratePhotorealStill}
+                disabled={isGeneratingPhotoreal}
+                className="flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-4 py-2 text-xs font-semibold text-amber-300 hover:from-amber-500/30 hover:to-orange-500/30 transition shadow-md shadow-amber-900/30 disabled:opacity-50"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                <span>{isGeneratingPhotoreal ? 'Synthesizing...' : '✨ Generate Photoreal Still'}</span>
               </button>
               <button
                 type="button"
