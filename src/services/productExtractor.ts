@@ -145,7 +145,7 @@ export async function extractProductFromUrl(url: string): Promise<ExtractedProdu
   // 1. Try Backend API first
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
     const backendUrl = getBackendApiUrl();
 
     const apiRes = await fetch(`${backendUrl}/api/products/extract`, {

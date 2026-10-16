@@ -109,17 +109,21 @@ export class ImagePoseService {
       let rotationDeg = (angleRad * 180) / Math.PI;
       rotationDeg = Math.max(-35, Math.min(35, rotationDeg));
 
-      // Estimate chin position from nose and mouth landmarks
-      const mouthY = mouthL && mouthR ? (mouthL.y + mouthR.y) / 2 : (nose?.y ?? 0.2) + 0.08;
-      const chinY = mouthY + Math.max(0.03, (mouthY - (nose?.y ?? 0.2)) * 0.7);
-
-      // Collar notch sits at the suprasternal notch at the base of the neck, below the chin
-      let collarY = Math.max(shoulderMidY + 0.012, chinY + 0.02);
-
       // Distinguish portrait / bust shot from full body:
-      // In close-up portraits (like headshots), the nose is typically below y = 0.22,
-      // and shoulders are in the lower portion (y > 0.45).
-      const isPortrait = (nose?.y ?? 0) > 0.2 || shoulderMidY > 0.45;
+      // In close-up portraits (like passport/headshots), the nose is typically below y = 0.18,
+      // and shoulders are in the lower portion (y > 0.42).
+      const isPortrait = (nose?.y ?? 0) > 0.18 || shoulderMidY > 0.42;
+
+      // Estimate chin and base-of-neck position
+      const mouthY = mouthL && mouthR ? (mouthL.y + mouthR.y) / 2 : (nose?.y ?? 0.2) + 0.08;
+      const faceH = Math.max(0.05, mouthY - (nose?.y ?? (mouthY - 0.08)));
+      const chinY = mouthY + faceH * 0.55;
+      const neckCollarY = chinY + Math.max(0.015, faceH * 0.35);
+
+      // Collar notch sits at the suprasternal notch at base of neck, between chin and shoulders
+      let collarY = isPortrait
+        ? Math.min(shoulderMidY - 0.015, Math.max(chinY + 0.015, neckCollarY))
+        : Math.min(shoulderMidY, Math.max(chinY + 0.02, neckCollarY));
 
       // Torso height estimation
       let torsoHeight = 0.45;
@@ -149,11 +153,11 @@ export class ImagePoseService {
     }
 
     // Heuristic Fallback when pose detection fails (e.g. wasm unavailable or illustration)
-    // For portrait photos (headshots), the head and face fill the top portion, shoulders start at ~0.50.
+    // For portrait photos (headshots), the head and face fill the top portion, shoulders start at ~0.56.
     // For full body photos, shoulders start around ~0.24.
     const isLikelyPortrait = isTall;
-    const fallbackCollarY = isLikelyPortrait ? 0.50 : 0.24;
-    const fallbackShoulderDist = isLikelyPortrait ? 0.40 : 0.26;
+    const fallbackCollarY = isLikelyPortrait ? 0.56 : 0.24;
+    const fallbackShoulderDist = isLikelyPortrait ? 0.55 : 0.26;
 
     return {
       hasPose: false,

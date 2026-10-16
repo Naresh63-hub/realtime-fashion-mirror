@@ -278,6 +278,12 @@ export class VirtualTryOnService {
             // Match the garment's outer shoulder seam distance to the user's detected shoulder distance
             let baseWidth = (analysis.shoulderDistance * canvas.width) / garmentShoulderRatio;
 
+            // In portrait / bust shots (close-up headshots), shoulders extend to the frame edges.
+            // Ensure garment is wide enough to cover existing clothing across the chest and shoulders.
+            if (analysis.isPortraitOrHeadshot) {
+              baseWidth = Math.max(baseWidth, canvas.width * 0.92);
+            }
+
             // Apply category sizing adjustments
             if (category === CC.KURTI || category === CC.DRESS) {
               baseWidth *= 1.05;
@@ -297,14 +303,13 @@ export class VirtualTryOnService {
             // Adapt framing presets gracefully without discarding real landmarks
             const preset = fitOptions?.framingPreset ?? 'auto';
             if (preset === 'portrait') {
+              baseWidth = Math.max(baseWidth, canvas.width * 0.94);
+              baseHeight = baseWidth * garmentRatio;
               if (analysis.hasPose) {
-                baseWidth *= 1.04;
-                baseHeight = baseWidth * garmentRatio;
+                collarY = Math.min(collarY, analysis.shoulderMidY * canvas.height - 10);
               } else {
-                baseWidth = canvas.width * 0.68;
-                baseHeight = baseWidth * garmentRatio;
                 collarX = canvas.width * 0.5;
-                collarY = canvas.height * 0.48;
+                collarY = canvas.height * 0.56;
               }
             } else if (preset === 'full-body') {
               if (analysis.hasPose) {
