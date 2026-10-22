@@ -30,10 +30,20 @@ export function getBackendApiUrl(): string {
   } catch {
     // Fall back to env or default
   }
-  const envUrl = (import.meta.env.VITE_BACKEND_API_URL as string)?.trim();
-  if (envUrl && (envUrl.startsWith('http://') || envUrl.startsWith('https://'))) {
-    return envUrl.replace(/\/+$/, '');
+
+  // 1. Prioritize VITE_API_BASE_URL (standard for Vercel production deployment)
+  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string)?.trim();
+  if (apiBaseUrl && (apiBaseUrl.startsWith('http://') || apiBaseUrl.startsWith('https://'))) {
+    return apiBaseUrl.replace(/\/+$/, '');
   }
+
+  // 2. Fall back to VITE_BACKEND_API_URL (backward-compatible fallback)
+  const backendUrl = (import.meta.env.VITE_BACKEND_API_URL as string)?.trim();
+  if (backendUrl && (backendUrl.startsWith('http://') || backendUrl.startsWith('https://'))) {
+    return backendUrl.replace(/\/+$/, '');
+  }
+
+  // 3. Fall back to APP_CONFIG centralized setting or local default
   return (APP_CONFIG.API.BASE_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
 }
 

@@ -26,6 +26,15 @@ def test_health_check():
     assert "ssrf_protection" in data["features"]
 
 
+def test_health_alias_check():
+    """Verify that root /health endpoint functions identically for Render health checks."""
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "ssrf_protection" in data["features"]
+
+
 def test_ssrf_rejects_localhost():
     with pytest.raises(HTTPException) as exc_info:
         validate_url_ssrf_safe("http://localhost:8080/admin")

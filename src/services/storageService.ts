@@ -19,6 +19,11 @@ const STORAGE_KEYS = {
   COMPARE_LIST: 'afm_compare_looks_v1',
 } as const;
 
+const defaultInferenceMode: 'client-high-res' | 'cloud-genai' =
+  typeof import.meta !== 'undefined' && import.meta.env?.VITE_VTON_INFERENCE_MODE === 'cloud-genai'
+    ? 'cloud-genai'
+    : 'client-high-res';
+
 export const DEFAULT_PREFERENCES: UserPreferences = {
   theme: 'dark',
   cameraResolution: '720p',
@@ -27,7 +32,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   smoothingFactor: 0.7,
   confidenceThreshold: 0.5,
   showLandmarksByDefault: false,
-  inferenceMode: 'client-high-res',
+  inferenceMode: defaultInferenceMode,
   cloudVtonApiUrl: '',
   storagePreference: 'local',
 };

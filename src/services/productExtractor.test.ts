@@ -3,10 +3,18 @@ import {
   validateProductUrl,
   inferCategoryFromText,
   extractProductFromUrl,
+  getBackendApiUrl,
 } from './productExtractor';
 import { ClothingCategory } from '../types';
 
 describe('Product URL Extractor Service', () => {
+  it('resolves backend API URL safely with fallback', () => {
+    const url = getBackendApiUrl();
+    expect(url).toBeDefined();
+    expect(url).toMatch(/^https?:\/\//);
+    expect(url.endsWith('/')).toBe(false);
+  });
+
   it('validates correct HTTP and HTTPS URLs', () => {
     expect(validateProductUrl('https://www.myntra.com/shirts/roadster/123').valid).toBe(true);
     expect(validateProductUrl('https://www.amazon.in/dp/B0812345').valid).toBe(true);

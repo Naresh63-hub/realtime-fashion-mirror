@@ -44,28 +44,46 @@ app = FastAPI(
 )
 
 # Cross-Origin Resource Sharing (CORS) configuration
-ALLOWED_ORIGINS = [
+# Automatically merges production FRONTEND_URL, CORS_ALLOWED_ORIGINS, and local dev origins.
+_default_dev_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+_env_origins = [
     orig.strip()
-    for orig in os.getenv(
-        "CORS_ALLOWED_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000",
-    ).split(",")
+    for orig in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
     if orig.strip()
 ]
+_frontend_url = os.getenv("FRONTEND_URL", "").strip()
+if _frontend_url and _frontend_url not in _env_origins:
+    _env_origins.append(_frontend_url)
+
+ALLOWED_ORIGINS = list(dict.fromkeys(_default_dev_origins + _env_origins))
+
+# Allow localhost on any port, plus any vercel.app preview or production domain
+CORS_ORIGIN_REGEX = os.getenv(
+    "CORS_ORIGIN_REGEX",
+    r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$|^https://.*\.vercel\.app$",
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$",
+    allow_origin_regex=CORS_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
+@app.get("/health", response_model=HealthResponse)
 @app.get("/api/health", response_model=HealthResponse)
 def health_check():
-    """Health status and supported CV/AI capabilities."""
+    """Health status and supported CV/AI capabilities. Aliased to both /health and /api/health."""
     return HealthResponse(
         status="ok",
         version="1.0.0",
@@ -199,4 +217,5 @@ def end_live_session(session_id: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=port, reload=True)

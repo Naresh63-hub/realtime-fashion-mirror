@@ -54,8 +54,16 @@ export const PhotoUploadPage: React.FC = () => {
 
   // Check backend VTON status on mount
   useEffect(() => {
-    VirtualTryOnService.getBackendVTONConfig().then(setBackendConfig);
-  }, []);
+    VirtualTryOnService.getBackendVTONConfig().then((cfg) => {
+      setBackendConfig(cfg);
+      if (
+        cfg?.configured &&
+        (preferences.inferenceMode === 'cloud-genai' || import.meta.env.VITE_VTON_INFERENCE_MODE === 'cloud-genai')
+      ) {
+        setEngineMode('cloud-genai');
+      }
+    });
+  }, [preferences.inferenceMode]);
 
   const [showUrlImport, setShowUrlImport] = useState(false);
   const [importUrlInput, setImportUrlInput] = useState('');
