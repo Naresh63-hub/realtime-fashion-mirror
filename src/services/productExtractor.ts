@@ -208,6 +208,16 @@ export async function extractProductFromUrl(url: string): Promise<ExtractedProdu
     category = ClothingCategory.JACKET;
     defaultImg = '/garments/jacket.svg';
     price = 4590;
+  } else if (host.includes('hm.com') || host.includes('h-and-m')) {
+    brand = 'H&M';
+    category = ClothingCategory.SHIRT;
+    defaultImg = '/garments/shirt.svg';
+    price = 1499;
+  } else if (host.includes('uniqlo')) {
+    brand = 'Uniqlo';
+    category = ClothingCategory.T_SHIRT;
+    defaultImg = '/garments/tee.svg';
+    price = 1290;
   }
 
   return {

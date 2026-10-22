@@ -67,7 +67,55 @@ DEMO_CATALOG_FIXTURES: Dict[str, Dict] = {
         ],
         "description": "Zip-up moto jacket with lapel collar and metal zip pockets.",
     },
+    "hm.com": {
+        "title": "H&M Relaxed Fit Patterned Resort Shirt",
+        "brand": "H&M",
+        "price": 1499.0,
+        "currency": "INR",
+        "category": "shirt",
+        "retailer": "H&M",
+        "images": [
+            "/garments/shirt.svg",
+            "/garments/top.svg",
+        ],
+        "description": "Short-sleeved resort shirt in lightweight viscose fabric with Cuban collar.",
+    },
+    "uniqlo.com": {
+        "title": "Uniqlo AIRism Cotton Crew Neck Oversized T-Shirt",
+        "brand": "Uniqlo",
+        "price": 1290.0,
+        "currency": "INR",
+        "category": "t-shirt",
+        "retailer": "Uniqlo",
+        "images": [
+            "/garments/tee.svg",
+            "/garments/shirt.svg",
+        ],
+        "description": "Double-face fabric with smooth AIRism on the inside and high-quality cotton on the outside.",
+    },
 }
+
+
+def find_catalog_fixture(hostname: str) -> Optional[Dict]:
+    """Finds catalog fixture for supported retailers when network access is blocked or running offline."""
+    host = hostname.lower()
+    for domain_key, fixture in DEMO_CATALOG_FIXTURES.items():
+        if domain_key in host:
+            return fixture
+    # Flexible domain matching
+    if "amazon" in host:
+        return DEMO_CATALOG_FIXTURES.get("amazon.in")
+    if "myntra" in host:
+        return DEMO_CATALOG_FIXTURES.get("myntra.com")
+    if "ajio" in host:
+        return DEMO_CATALOG_FIXTURES.get("ajio.com")
+    if "zara" in host:
+        return DEMO_CATALOG_FIXTURES.get("zara.com")
+    if "hm.com" in host or "h-and-m" in host:
+        return DEMO_CATALOG_FIXTURES.get("hm.com")
+    if "uniqlo" in host:
+        return DEMO_CATALOG_FIXTURES.get("uniqlo.com")
+    return None
 
 
 def infer_category(text: str) -> str:
@@ -168,20 +216,20 @@ async def extract_product_from_url(url: str) -> UrlExtractResponse:
 
     # If live fetch was unsuccessful or blocked, check known fixtures for offline/test reliability
     if not html_content or len(html_content.strip()) < 50:
-        for domain_key, fixture in DEMO_CATALOG_FIXTURES.items():
-            if domain_key in hostname:
-                return UrlExtractResponse(
-                    title=fixture["title"],
-                    brand=fixture.get("brand"),
-                    price=fixture.get("price"),
-                    currency=fixture.get("currency", "INR"),
-                    images=fixture["images"],
-                    selected_image_url=fixture["images"][0],
-                    original_url=safe_url,
-                    category=fixture.get("category", "t-shirt"),
-                    retailer=fixture.get("retailer", domain_key.split(".")[0].capitalize()),
-                    description=fixture.get("description"),
-                )
+        fixture = find_catalog_fixture(hostname)
+        if fixture:
+            return UrlExtractResponse(
+                title=fixture["title"],
+                brand=fixture.get("brand"),
+                price=fixture.get("price"),
+                currency=fixture.get("currency", "INR"),
+                images=fixture["images"],
+                selected_image_url=fixture["images"][0],
+                original_url=safe_url,
+                category=fixture.get("category", "t-shirt"),
+                retailer=fixture.get("retailer", hostname.replace("www.", "").split(".")[0].capitalize()),
+                description=fixture.get("description"),
+            )
 
     # 3. Parse Metadata (OpenGraph, Twitter, JSON-LD)
     title = (
@@ -222,6 +270,14 @@ async def extract_product_from_url(url: str) -> UrlExtractResponse:
                 for img in j_images:
                     if isinstance(img, str):
                         images.append(urljoin(safe_url, img))
+                    elif isinstance(img, dict):
+                        img_url = img.get("url") or img.get("contentUrl")
+                        if img_url and isinstance(img_url, str):
+                            images.append(urljoin(safe_url, img_url))
+            elif isinstance(j_images, dict):
+                img_url = j_images.get("url") or j_images.get("contentUrl")
+                if img_url and isinstance(img_url, str):
+                    images.append(urljoin(safe_url, img_url))
         if "offers" in json_ld:
             offers = json_ld["offers"]
             if isinstance(offers, dict):
@@ -246,6 +302,15 @@ async def extract_product_from_url(url: str) -> UrlExtractResponse:
     raw_curr = extract_meta_tag(html_content, "product:price:currency") or extract_meta_tag(html_content, "og:price:currency")
     if raw_curr:
         currency = raw_curr
+
+    # Additional image discovery (Amazon data-old-hires, image_src link tag)
+    if not images and html_content:
+        hires_match = re.search(r'data-old-hires=["\'](https?://[^"\']+)["\']', html_content, re.IGNORECASE)
+        if hires_match:
+            images.append(hires_match.group(1))
+        link_img = re.search(r'<link[^>]*rel=["\']image_src["\'][^>]*href=["\']([^"\']+)["\']', html_content, re.IGNORECASE)
+        if link_img:
+            images.append(urljoin(safe_url, link_img.group(1)))
 
     # Fallback default image if none discovered
     if not images:

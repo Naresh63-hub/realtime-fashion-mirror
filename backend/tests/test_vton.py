@@ -1,4 +1,4 @@
-﻿"""
+"""
 Pytest suite for Generative AI Virtual Try-On (VTON) provider integration.
 Tests:
 - Configuration discovery (configured vs unconfigured)
@@ -212,3 +212,92 @@ def test_vton_job_cancellation():
 
     chk = client.get(f"/api/tryon/jobs/{job_id}").json()
     assert chk["status"] == "cancelled"
+
+
+def test_vton_exact_garment_image_delivered_to_provider():
+    """Verify provider receives the exact chosen garment URL rather than any default or placeholder."""
+    captured_requests = []
+    custom_garment_url = "https://images.zara.com/photos/item/structured_biker_jacket_view2.jpg"
+
+    set_test_inference_hook(
+        lambda req: captured_requests.append(req) or {
+            "status": "succeeded",
+            "result_image_url": "https://replicate.delivery/pbxt/tryon_biker_jacket_output.png",
+        }
+    )
+
+    try:
+        resp = client.post(
+            "/api/tryon/jobs",
+            json={
+                "person_image": VALID_B64_IMAGE,
+                "garment_image": custom_garment_url,
+                "garment_name": "Biker Jacket",
+                "category": "jacket",
+                "model_name": "cloud-genai",
+            },
+        )
+        assert resp.status_code == 201
+        assert len(captured_requests) == 1
+        assert captured_requests[0].garment_image == custom_garment_url
+        assert captured_requests[0].category == "jacket"
+    finally:
+        set_test_inference_hook(None)
+
+
+def test_vton_auth_failure_error_code():
+    """Test simulated provider 401 authentication failure."""
+    set_test_inference_hook(
+        lambda req: {
+            "status": "failed",
+            "error": "Authentication failed: Invalid VTON_API_KEY.",
+            "error_code": "ERR_AUTH_FAILED",
+        }
+    )
+
+    try:
+        resp = client.post(
+            "/api/tryon/jobs",
+            json={
+                "person_image": VALID_B64_IMAGE,
+                "garment_image": VALID_B64_IMAGE,
+                "garment_name": "T-Shirt",
+                "category": "t-shirt",
+                "model_name": "cloud-genai",
+            },
+        )
+        assert resp.status_code == 201
+        job_id = resp.json()["job_id"]
+        status_resp = client.get(f"/api/tryon/jobs/{job_id}")
+        assert status_resp.json()["error_code"] == "ERR_AUTH_FAILED"
+    finally:
+        set_test_inference_hook(None)
+
+
+def test_vton_invalid_parameters_error_code():
+    """Test simulated provider 422 input parameter validation rejection."""
+    set_test_inference_hook(
+        lambda req: {
+            "status": "failed",
+            "error": "Provider rejected input parameters: Image dimensions too small.",
+            "error_code": "ERR_INVALID_PARAMETERS",
+        }
+    )
+
+    try:
+        resp = client.post(
+            "/api/tryon/jobs",
+            json={
+                "person_image": VALID_B64_IMAGE,
+                "garment_image": VALID_B64_IMAGE,
+                "garment_name": "T-Shirt",
+                "category": "t-shirt",
+                "model_name": "cloud-genai",
+            },
+        )
+        assert resp.status_code == 201
+        job_id = resp.json()["job_id"]
+        status_resp = client.get(f"/api/tryon/jobs/{job_id}")
+        assert status_resp.json()["error_code"] == "ERR_INVALID_PARAMETERS"
+    finally:
+        set_test_inference_hook(None)

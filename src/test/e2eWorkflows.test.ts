@@ -155,4 +155,71 @@ describe('End-to-End Core Workflows (Section 11)', () => {
     // Verified look is also cleared from compare list
     expect(StorageService.getCompareList()).not.toContain(saved.id);
   });
+
+  // -------------------------------------------------------------------------
+  // Workflow F: Complete 7-Step Shopping URL -> Exact Garment -> VTON -> Live
+  // -------------------------------------------------------------------------
+  it('Workflow F: Full 7-step shopping-to-VTON workflow including exact image selection and live mirror handoff', async () => {
+    const zaraProductUrl = 'https://www.zara.com/in/en/biker-jacket-p01234567.html';
+
+    // Step 1 & 2: Safely extract product metadata and available garment images
+    const extracted = await extractProductFromUrl(zaraProductUrl);
+    expect(extracted.title).toBeDefined();
+    expect(extracted.category).toBe(ClothingCategory.JACKET);
+    expect(extracted.images.length).toBeGreaterThanOrEqual(1);
+
+    // Step 3: User selects the exact garment image (e.g. second image angle if available, or selectedImageUrl)
+    const exactChosenImage = extracted.images.length > 1 ? extracted.images[1] : extracted.selectedImageUrl;
+    expect(exactChosenImage).toBeDefined();
+
+    // Step 4: User uploads personal photograph
+    const userPhoto = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const validation = VirtualTryOnService.validateInputs(userPhoto, exactChosenImage);
+    expect(validation.valid).toBe(true);
+
+    // Step 5: Application sends the selected garment image and person photograph to model
+    const job = await VirtualTryOnService.generateTryOn({
+      personImage: userPhoto,
+      garmentImage: exactChosenImage,
+      garmentName: extracted.title,
+      category: extracted.category,
+      modelMode: 'client-high-res',
+    });
+    expect(job.id).toBeDefined();
+    expect(job.garmentImageUrl).toBe(exactChosenImage);
+
+    // Step 6: Result is displayed and saved to private gallery
+    const savedLook = StorageService.saveLook({
+      title: `Fitted Look: ${extracted.title}`,
+      personImageUrl: userPhoto,
+      resultImageUrl: job.personImageUrl,
+      garmentId: `zara_${Date.now()}`,
+      garmentName: extracted.title,
+      garmentCategory: extracted.category,
+      garmentImageUrl: exactChosenImage,
+      priceINR: extracted.price || 4990,
+      isFavorite: true,
+    });
+    expect(savedLook.id).toBeDefined();
+    expect(savedLook.garmentImageUrl).toBe(exactChosenImage);
+
+    // Step 7: Garment payload is fully structured for Live Camera mode handoff
+    const liveReadyGarment = {
+      id: savedLook.garmentId,
+      sku: 'IMP-ZARA-01',
+      name: extracted.title,
+      category: extracted.category,
+      priceINR: extracted.price || 4990,
+      description: extracted.description || 'Imported item',
+      imageUrl: exactChosenImage,
+      swatch: 'from-violet-600 to-indigo-700',
+      brand: extracted.brand || 'Zara',
+      images: extracted.images,
+      rating: 4.8,
+      inStock: true,
+      sizes: ['S', 'M', 'L'],
+    };
+    expect(liveReadyGarment.imageUrl).toBe(exactChosenImage);
+    expect(liveReadyGarment.name).toBe(extracted.title);
+  });
 });

@@ -986,26 +986,46 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                 <Columns2 className="h-4 w-4" />
                 <span>Compare Outfits</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  toast.success(`Opening ${garment.name} in Live Camera fitting room...`);
+                  navigate('live');
+                }}
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-violet-500/40 bg-violet-600/20 py-2.5 text-xs font-bold text-violet-300 hover:bg-violet-600/30 transition backdrop-blur-md shadow-sm"
+              >
+                <Camera className="h-4 w-4 text-violet-400" />
+                <span>Try this Garment in Live Camera</span>
+              </button>
             </div>
           </div>
 
           {/* Next Steps */}
           <div className="rounded-3xl border border-white/10 bg-gray-900/40 p-5 space-y-3 backdrop-blur-xl">
             <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300">Try Another Style</h4>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => navigate('live')}
+                className="rounded-xl border border-violet-500/30 bg-violet-600/10 py-2.5 text-xs font-semibold text-violet-300 hover:bg-violet-600/20 transition text-center backdrop-blur-md flex items-center justify-center gap-1"
+              >
+                <Camera className="h-3.5 w-3.5" />
+                <span>Live</span>
+              </button>
               <button
                 type="button"
                 onClick={() => navigate('gallery')}
-                className="flex-1 rounded-xl bg-white/10 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition text-center backdrop-blur-md"
+                className="rounded-xl bg-white/10 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition text-center backdrop-blur-md"
               >
-                Browse Garments
+                Closet
               </button>
               <button
                 type="button"
                 onClick={() => navigate('photo-upload')}
-                className="flex-1 rounded-xl border border-white/10 py-2.5 text-xs font-semibold text-gray-300 hover:bg-white/10 transition text-center backdrop-blur-md"
+                className="rounded-xl border border-white/10 py-2.5 text-xs font-semibold text-gray-300 hover:bg-white/10 transition text-center backdrop-blur-md"
               >
-                Change Photo
+                Photo
               </button>
             </div>
           </div>

@@ -71,10 +71,81 @@ def test_product_extract_amazon_fixture():
     assert data["retailer"] == "Amazon India"
 
 
+def test_product_extract_amazon_com_fixture():
+    response = client.post("/api/products/extract", json={"url": "https://www.amazon.com/dp/B08XYZ1234"})
+    assert response.status_code == 200
+    data = response.json()
+    assert "Amazon Essentials" in data["title"]
+    assert len(data["images"]) >= 2
+
+
+def test_product_extract_ajio_fixture():
+    response = client.post("/api/products/extract", json={"url": "https://www.ajio.com/avaasa-kurti/p/461234567_navy"})
+    assert response.status_code == 200
+    data = response.json()
+    assert "AVAASA" in data["title"]
+    assert data["category"] == "kurti"
+    assert data["retailer"] == "AJIO"
+
+
+def test_product_extract_zara_fixture():
+    response = client.post("/api/products/extract", json={"url": "https://www.zara.com/in/en/biker-jacket-p01234567.html"})
+    assert response.status_code == 200
+    data = response.json()
+    assert "Biker Jacket" in data["title"]
+    assert data["category"] == "jacket"
+    assert data["retailer"] == "Zara"
+
+
+def test_product_extract_hm_fixture():
+    response = client.post("/api/products/extract", json={"url": "https://www2.hm.com/en_in/productpage.1234567.html"})
+    assert response.status_code == 200
+    data = response.json()
+    assert "H&M" in data["title"]
+    assert data["category"] == "shirt"
+    assert len(data["images"]) >= 2
+
+
+def test_product_extract_uniqlo_fixture():
+    response = client.post("/api/products/extract", json={"url": "https://www.uniqlo.com/in/en/products/E456789"})
+    assert response.status_code == 200
+    data = response.json()
+    assert "Uniqlo" in data["title"]
+    assert data["category"] == "t-shirt"
+
+
 def test_product_extract_ssrf_blocked_endpoint():
     response = client.post("/api/products/extract", json={"url": "http://127.0.0.1:8000/internal"})
     assert response.status_code == 400
     assert "forbidden" in response.json()["detail"].lower() or "restricted" in response.json()["detail"].lower()
+
+
+def test_product_extract_invalid_url_empty():
+    response = client.post("/api/products/extract", json={"url": ""})
+    assert response.status_code == 400
+
+
+def test_product_extract_unsupported_scheme():
+    response = client.post("/api/products/extract", json={"url": "ftp://files.example.com/item.html"})
+    assert response.status_code == 400
+
+
+def test_selected_product_image_passed_to_vton_job():
+    """Verify that the exact selected garment image URL is preserved and passed rather than a placeholder."""
+    specific_garment_url = "https://assets.myntrastore.com/h_1440,q_90,w_1080/v1/assets/images/12345/specific_shirt_angle2.jpg"
+    create_resp = client.post(
+        "/api/tryon/jobs",
+        json={
+            "person_image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+            "garment_image": specific_garment_url,
+            "garment_name": "Roadster Casual Shirt",
+            "category": "shirt",
+            "model_name": "client-high-res",
+        },
+    )
+    assert create_resp.status_code == 201
+    job = create_resp.json()
+    assert job["garment_image_url"] == specific_garment_url
 
 
 def test_tryon_job_lifecycle():

@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Info,
   Link2,
+  Camera,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
@@ -394,7 +395,60 @@ export const PhotoUploadPage: React.FC = () => {
                     <Link2 className="h-3.5 w-3.5" />
                     <span>{showUrlImport ? 'Close Link' : 'Import Link'}</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toast.info(`Opening ${selectedGarment.name} in Live Camera...`);
+                      navigate('live');
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-fuchsia-500/30 bg-fuchsia-600/10 px-3 py-2 text-xs font-semibold text-fuchsia-300 hover:bg-fuchsia-600/20 transition text-center"
+                    title="Try this garment in Live Camera"
+                  >
+                    <Camera className="h-3.5 w-3.5" />
+                    <span>Live Mirror</span>
+                  </button>
                 </div>
+
+                {/* Multiple Extracted Images Selector */}
+                {selectedGarment.images && selectedGarment.images.length > 1 && (
+                  <div className="pt-2 border-t border-white/10">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-semibold text-gray-300">
+                        Choose Exact Garment Image / Angle:
+                      </span>
+                      <span className="text-[10px] text-violet-400 font-mono">
+                        {selectedGarment.images.indexOf(selectedGarment.imageUrl) + 1} of {selectedGarment.images.length}
+                      </span>
+                    </div>
+                    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                      {selectedGarment.images.map((img, idx) => {
+                        const isSelected = selectedGarment.imageUrl === img;
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setSelectedGarment({ ...selectedGarment, imageUrl: img });
+                              toast.info(`Selected garment image #${idx + 1}`);
+                            }}
+                            className={`h-14 w-14 flex-shrink-0 rounded-xl border p-1 transition ${
+                              isSelected
+                                ? 'border-violet-500 bg-violet-600/30 ring-2 ring-violet-500/50 shadow-md'
+                                : 'border-white/10 bg-white/5 hover:border-violet-400/60'
+                            }`}
+                            title={`Select image view ${idx + 1}`}
+                          >
+                            <img
+                              src={img}
+                              alt={`${selectedGarment.name} angle ${idx + 1}`}
+                              className="h-full w-full object-contain"
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {showUrlImport && (
                   <div className="rounded-2xl border border-violet-500/30 bg-violet-950/20 p-3 space-y-2 mt-2">

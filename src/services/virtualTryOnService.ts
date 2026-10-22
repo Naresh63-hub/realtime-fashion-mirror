@@ -107,6 +107,52 @@ export class VirtualTryOnService {
   }
 
   /**
+   * Ensures the garment image payload is either an absolute HTTP/S URL,
+   * a valid Data URL, or converts a local relative asset to a raster Data URL.
+   */
+  public static async resolveGarmentPayload(garmentUrl: string): Promise<string> {
+    if (!garmentUrl) return garmentUrl;
+    if (garmentUrl.startsWith('data:') || garmentUrl.startsWith('http://') || garmentUrl.startsWith('https://')) {
+      return garmentUrl;
+    }
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return garmentUrl;
+    }
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(garmentUrl), 50);
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          clearTimeout(timer);
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || 600;
+            canvas.height = img.naturalHeight || 800;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              resolve(canvas.toDataURL('image/png'));
+              return;
+            }
+          } catch {
+            // ignore canvas taint
+          }
+          resolve(garmentUrl);
+        };
+        img.onerror = () => {
+          clearTimeout(timer);
+          resolve(garmentUrl);
+        };
+        img.src = garmentUrl;
+      } catch {
+        clearTimeout(timer);
+        resolve(garmentUrl);
+      }
+    });
+  }
+
+  /**
    * Submits a virtual try-on job for processing.
    */
   static async generateTryOn(request: TryOnRequest): Promise<TryOnJob> {
@@ -136,13 +182,14 @@ export class VirtualTryOnService {
 
     if (mode === 'cloud-genai') {
       try {
+        const resolvedGarmentImage = await this.resolveGarmentPayload(request.garmentImage);
         const backendUrl = getBackendApiUrl();
         const resp = await fetch(`${backendUrl}/api/tryon/jobs`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             person_image: request.personImage,
-            garment_image: request.garmentImage,
+            garment_image: resolvedGarmentImage,
             garment_name: request.garmentName,
             category: request.category || 't-shirt',
             model_name: 'cloud-genai',
