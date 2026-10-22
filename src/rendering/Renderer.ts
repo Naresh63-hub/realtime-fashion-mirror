@@ -53,6 +53,9 @@ export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private garmentLayer: HTMLCanvasElement;
   private garmentCtx: CanvasRenderingContext2D;
+  private cachedTintCanvas: HTMLCanvasElement | null = null;
+  private cachedTintCtx: CanvasRenderingContext2D | null = null;
+  private cachedTintImg: ImageData | null = null;
   private options: RendererOptions;
 
   private frameCount = 0;
@@ -198,7 +201,9 @@ export class Renderer {
   }
 
   dispose(): void {
-    // Nothing retained beyond canvases; GC handles the rest.
+    this.cachedTintCanvas = null;
+    this.cachedTintCtx = null;
+    this.cachedTintImg = null;
   }
 
   // ------------------------------------------------------------------
@@ -218,13 +223,25 @@ export class Renderer {
 
   private drawSegmentationTint(seg: SegmentationResult, width: number, height: number): void {
     const { mask } = seg;
-    const tint = document.createElement('canvas');
-    tint.width = mask.width;
-    tint.height = mask.height;
-    const tctx = tint.getContext('2d');
-    if (!tctx) return;
+    if (
+      !this.cachedTintCanvas ||
+      !this.cachedTintCtx ||
+      this.cachedTintCanvas.width !== mask.width ||
+      this.cachedTintCanvas.height !== mask.height
+    ) {
+      this.cachedTintCanvas = document.createElement('canvas');
+      this.cachedTintCanvas.width = mask.width;
+      this.cachedTintCanvas.height = mask.height;
+      this.cachedTintCtx = this.cachedTintCanvas.getContext('2d');
+      if (this.cachedTintCtx) {
+        this.cachedTintImg = this.cachedTintCtx.createImageData(mask.width, mask.height);
+      }
+    }
 
-    const img = tctx.createImageData(mask.width, mask.height);
+    const tctx = this.cachedTintCtx;
+    const img = this.cachedTintImg;
+    if (!tctx || !img) return;
+
     for (let p = 0; p < mask.data.length; p++) {
       const a = mask.data[p];
       const o = p * 4;
@@ -237,7 +254,7 @@ export class Renderer {
 
     this.ctx.save();
     this.ctx.imageSmoothingEnabled = true;
-    this.ctx.drawImage(tint, 0, 0, width, height);
+    this.ctx.drawImage(this.cachedTintCanvas, 0, 0, width, height);
     this.ctx.restore();
   }
 
@@ -326,7 +343,7 @@ export class Renderer {
       g.fillStyle = 'rgba(0,0,0,1)';
       // Feathered soft boundary: eliminates harsh digital cookie-cutter punch lines
       if ('filter' in g) {
-        g.filter = 'blur(6px)';
+        g.filter = 'blur(4px)';
       }
       for (const cap of occlusion.capsules) {
         const dx = cap.b.x - cap.a.x;
@@ -352,6 +369,9 @@ export class Renderer {
           g.arc(cap.a.x, cap.a.y, cap.radius, 0, Math.PI * 2);
           g.fill();
         }
+      }
+      if ('filter' in g) {
+        g.filter = 'none';
       }
       g.restore();
     }

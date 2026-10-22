@@ -89,6 +89,8 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
     segmentationInferenceMs: 0,
     inferenceFps: 0,
   });
+  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
 
   // ---- Engines (stable refs) ------------------------------------------
   const refs = useRef<PipelineRefs>({
@@ -126,6 +128,7 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
   const debugModeRef = useRef(APP_CONFIG.RENDERING.ENABLE_DEBUG_MODE);
   const physicsLastStepRef = useRef<number>(0);
   const batteryInfoRef = useRef<string | undefined>(undefined);
+  const isProcessingRef = useRef(false);
 
   // Monitor device battery if supported (for mobile/thermal diagnostics)
   useEffect(() => {
@@ -186,153 +189,165 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
   const processFrame = useCallback(
     (timestamp: number) => {
       if (!runningRef.current) return;
+      if (isProcessingRef.current) return;
+      isProcessingRef.current = true;
 
-      const pipeline = refs.current;
-      const video = videoElRef.current;
-      const renderer = pipeline.renderer;
-      if (!video || !renderer) return;
+      try {
+        const pipeline = refs.current;
+        const video = videoElRef.current;
+        const renderer = pipeline.renderer;
+        if (!video || !renderer) return;
 
-      // Adaptive cadence: hold target FPS; back off when frames run slow.
-      const elapsed = timestamp - lastTickRef.current;
-      if (elapsed < effectiveIntervalRef.current) return;
-      lastTickRef.current = timestamp;
+        // Adaptive cadence: hold target FPS; back off when frames run slow.
+        const elapsed = timestamp - lastTickRef.current;
+        if (elapsed < effectiveIntervalRef.current) return;
+        lastTickRef.current = timestamp;
 
-      const frameStart = performance.now();
+        const frameStart = performance.now();
 
-      // ---- Pose (ML inference) ----
-      let pose: Pose | null = null;
-      const sinceInference = timestamp - lastInferenceRef.current;
-      const minInferenceInterval = effectiveIntervalRef.current;
-      const frameCaptureTime = performance.now();
-      if (sinceInference >= minInferenceInterval) {
-        lastInferenceRef.current = timestamp;
-        const t0 = performance.now();
-        pose = pipeline.pose.detectForVideo(video, timestamp, frameCaptureTime);
-        poseInferenceMsRef.current = performance.now() - t0;
+        // ---- Pose (ML inference) ----
+        let pose: Pose | null = null;
+        const sinceInference = timestamp - lastInferenceRef.current;
+        const minInferenceInterval = effectiveIntervalRef.current;
+        const frameCaptureTime = performance.now();
+        if (sinceInference >= minInferenceInterval) {
+          lastInferenceRef.current = timestamp;
+          const t0 = performance.now();
+          pose = pipeline.pose.detectForVideo(video, timestamp, frameCaptureTime);
+          poseInferenceMsRef.current = performance.now() - t0;
 
-        inferenceCountRef.current++;
-        if (inferenceWindowRef.current === 0) {
-          inferenceWindowRef.current = performance.now();
+          inferenceCountRef.current++;
+          if (inferenceWindowRef.current === 0) {
+            inferenceWindowRef.current = performance.now();
+          }
+          const windowElapsed = performance.now() - inferenceWindowRef.current;
+          if (windowElapsed >= 1000) {
+            inferenceFpsRef.current = Math.round((inferenceCountRef.current * 1000) / windowElapsed);
+            inferenceCountRef.current = 0;
+            inferenceWindowRef.current = performance.now();
+          }
         }
-        const windowElapsed = performance.now() - inferenceWindowRef.current;
-        if (windowElapsed >= 1000) {
-          inferenceFpsRef.current = Math.round((inferenceCountRef.current * 1000) / windowElapsed);
-          inferenceCountRef.current = 0;
-          inferenceWindowRef.current = performance.now();
+
+        if (pose) {
+          // Smoothing + plausibility gate (reads user preference with env fallback)
+          const prefs = StorageService.getPreferences();
+          const smoothing = prefs?.smoothingFactor ?? APP_CONFIG.TRACKING.SMOOTHING_FACTOR;
+          const minConfidence = prefs?.confidenceThreshold ?? APP_CONFIG.TRACKING.TRACKING_CONFIDENCE;
+
+          pose.landmarks = smoothLandmarks(
+            smoothedLandmarksRef.current,
+            pose.landmarks,
+            smoothing
+          );
+          smoothedLandmarksRef.current = pose.landmarks;
+
+          const confident = pose.confidence >= minConfidence;
+          if (confident) {
+            lastPoseRef.current = pose;
+            lastPoseTimeRef.current = timestamp;
+            runPhysicsHook(pipeline, pose, performance.now(), physicsLastStepRef);
+          } else {
+            pose = null; // treat low-confidence as no pose for warp purposes
+          }
         }
-      }
 
-      if (pose) {
-        // Smoothing + plausibility gate (reads user preference with env fallback)
-        const prefs = StorageService.getPreferences();
-        const smoothing = prefs?.smoothingFactor ?? APP_CONFIG.TRACKING.SMOOTHING_FACTOR;
-        const minConfidence = prefs?.confidenceThreshold ?? APP_CONFIG.TRACKING.TRACKING_CONFIDENCE;
+        // ---- Coasting: bridge brief detection dropouts ----
+        let coasted = false;
+        if (!pose && lastPoseRef.current) {
+          const sincePose = timestamp - lastPoseTimeRef.current;
+          if (sincePose < COAST_TIMEOUT_MS) {
+            pose = { ...lastPoseRef.current, isCoasted: true, timestamp };
+            coasted = true;
+          } else {
+            lastPoseRef.current = null;
+            smoothedLandmarksRef.current = null;
+            pipeline.clothing.resetSmoother();
+            pipeline.occlusion.reset();
+          }
+        }
 
-        pose.landmarks = smoothLandmarks(
-          smoothedLandmarksRef.current,
-          pose.landmarks,
-          smoothing
-        );
-        smoothedLandmarksRef.current = pose.landmarks;
+        // ---- Garment warp + occlusion (geometry only) ----
+        const activeGarment = garmentRef.current;
+        const frameWidth = video.videoWidth || APP_CONFIG.CAMERA.DEFAULT_WIDTH;
+        const frameHeight = video.videoHeight || APP_CONFIG.CAMERA.DEFAULT_HEIGHT;
 
-        const confident = pose.confidence >= minConfidence;
-        if (confident) {
-          lastPoseRef.current = pose;
-          lastPoseTimeRef.current = timestamp;
-          runPhysicsHook(pipeline, pose, performance.now(), physicsLastStepRef);
+        if (renderer.getWidth() !== frameWidth || renderer.getHeight() !== frameHeight) {
+          renderer.resize(frameWidth, frameHeight);
+        }
+
+        if (pose && activeGarment) {
+          warpRef.current = pipeline.clothing.calculateWarp(
+            pose,
+            activeGarment,
+            frameWidth,
+            frameHeight
+          );
+          occlusionRef.current = pipeline.occlusion.computeOccluders(pose, frameWidth, frameHeight);
+        } else if (!pose) {
+          warpRef.current = null;
+          occlusionRef.current = null;
+        }
+
+        // ---- Segmentation (ML; only when mask debug is on) ----
+        if (
+          APP_CONFIG.SEGMENTATION.ENABLED &&
+          segDebugRef.current &&
+          pipeline.segmentation.isReady()
+        ) {
+          const t0 = performance.now();
+          segmentationRef.current = pipeline.segmentation.segmentForVideo(video, timestamp);
+          segmentationInferenceMsRef.current = performance.now() - t0;
         } else {
-          pose = null; // treat low-confidence as no pose for warp purposes
+          segmentationRef.current = null;
         }
-      }
 
-      // ---- Coasting: bridge brief detection dropouts ----
-      let coasted = false;
-      if (!pose && lastPoseRef.current) {
-        const sincePose = timestamp - lastPoseTimeRef.current;
-        if (sincePose < COAST_TIMEOUT_MS) {
-          pose = { ...lastPoseRef.current, isCoasted: true, timestamp };
-          coasted = true;
-        } else {
+        // ---- Render ----
+        renderer.render({
+          video,
+          garment: warpRef.current ? activeGarment : null,
+          warp: warpRef.current,
+          pose: pose,
+          segmentation: segmentationRef.current,
+          occlusion: occlusionRef.current,
+          poseInferenceMs: poseInferenceMsRef.current,
+          segmentationInferenceMs: segmentationInferenceMsRef.current,
+          inferenceFps: inferenceFpsRef.current,
+          frameAgeMs: performance.now() - frameCaptureTime,
+          droppedFrames: pipeline.pose.getDroppedFrames(),
+          batteryInfo: batteryInfoRef.current,
+        });
+
+        // ---- Adaptive cadence bookkeeping ----
+        const frameTime = performance.now() - frameStart;
+        if (frameTime > APP_CONFIG.PERFORMANCE.MAX_LATENCY_MS) {
+          slowStreakRef.current++;
+          if (slowStreakRef.current >= APP_CONFIG.PERFORMANCE.SLOW_FRAME_STREAK_LIMIT) {
+            // Drop to ~60% cadence to recover headroom.
+            effectiveIntervalRef.current = Math.min(
+              1000 / APP_CONFIG.CAMERA.MIN_FPS,
+              effectiveIntervalRef.current * 1.25
+            );
+            slowStreakRef.current = 0;
+          }
+        } else if (frameTime < APP_CONFIG.PERFORMANCE.TARGET_LATENCY_MS) {
+          slowStreakRef.current = 0;
+          effectiveIntervalRef.current = Math.max(
+            1000 / APP_CONFIG.CAMERA.MAX_FPS,
+            effectiveIntervalRef.current * 0.95
+          );
+        }
+
+        // Coast timeout expiry → clear stale overlays and reset smoother
+        if (coasted && timestamp - lastPoseTimeRef.current >= COAST_TIMEOUT_MS) {
+          warpRef.current = null;
+          occlusionRef.current = null;
           lastPoseRef.current = null;
           smoothedLandmarksRef.current = null;
+          pipeline.clothing.resetSmoother();
+          pipeline.occlusion.reset();
         }
-      }
-
-      // ---- Garment warp + occlusion (geometry only) ----
-      const activeGarment = garmentRef.current;
-      const frameWidth = video.videoWidth || APP_CONFIG.CAMERA.DEFAULT_WIDTH;
-      const frameHeight = video.videoHeight || APP_CONFIG.CAMERA.DEFAULT_HEIGHT;
-
-      if (renderer.getWidth() !== frameWidth || renderer.getHeight() !== frameHeight) {
-        renderer.resize(frameWidth, frameHeight);
-      }
-
-      if (pose && activeGarment) {
-        warpRef.current = pipeline.clothing.calculateWarp(
-          pose,
-          activeGarment,
-          frameWidth,
-          frameHeight
-        );
-        occlusionRef.current = pipeline.occlusion.computeOccluders(pose, frameWidth, frameHeight);
-      } else if (!pose) {
-        warpRef.current = null;
-        occlusionRef.current = null;
-      }
-
-      // ---- Segmentation (ML; only when mask debug is on) ----
-      if (
-        APP_CONFIG.SEGMENTATION.ENABLED &&
-        segDebugRef.current &&
-        pipeline.segmentation.isReady()
-      ) {
-        const t0 = performance.now();
-        segmentationRef.current = pipeline.segmentation.segmentForVideo(video, timestamp);
-        segmentationInferenceMsRef.current = performance.now() - t0;
-      } else {
-        segmentationRef.current = null;
-      }
-
-      // ---- Render ----
-      renderer.render({
-        video,
-        garment: warpRef.current ? activeGarment : null,
-        warp: warpRef.current,
-        pose: pose,
-        segmentation: segmentationRef.current,
-        occlusion: occlusionRef.current,
-        poseInferenceMs: poseInferenceMsRef.current,
-        segmentationInferenceMs: segmentationInferenceMsRef.current,
-        inferenceFps: inferenceFpsRef.current,
-        frameAgeMs: performance.now() - frameCaptureTime,
-        droppedFrames: pipeline.pose.getDroppedFrames(),
-        batteryInfo: batteryInfoRef.current,
-      });
-
-      // ---- Adaptive cadence bookkeeping ----
-      const frameTime = performance.now() - frameStart;
-      if (frameTime > APP_CONFIG.PERFORMANCE.MAX_LATENCY_MS) {
-        slowStreakRef.current++;
-        if (slowStreakRef.current >= APP_CONFIG.PERFORMANCE.SLOW_FRAME_STREAK_LIMIT) {
-          // Drop to ~60% cadence to recover headroom.
-          effectiveIntervalRef.current = Math.min(
-            1000 / APP_CONFIG.CAMERA.MIN_FPS,
-            effectiveIntervalRef.current * 1.25
-          );
-          slowStreakRef.current = 0;
-        }
-      } else if (frameTime < APP_CONFIG.PERFORMANCE.TARGET_LATENCY_MS) {
-        slowStreakRef.current = 0;
-        effectiveIntervalRef.current = Math.max(
-          1000 / APP_CONFIG.CAMERA.MAX_FPS,
-          effectiveIntervalRef.current * 0.95
-        );
-      }
-
-      // Coast timeout expiry → clear stale overlays.
-      if (coasted && timestamp - lastPoseTimeRef.current >= COAST_TIMEOUT_MS) {
-        warpRef.current = null;
-        occlusionRef.current = null;
+      } finally {
+        isProcessingRef.current = false;
       }
     },
     []
@@ -392,11 +407,18 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
       await refs.current.camera.start(video);
       videoElRef.current = video;
 
+      // Populate available camera devices once permission is granted
+      CameraManager.getVideoDevices().then((devices) => {
+        if (devices.length > 0) setAvailableCameras(devices);
+      });
+
       const facingUser = refs.current.camera.getFacingMode() === 'user';
       const shouldMirror = prefs.mirrorUserCamera ? facingUser : false;
       mirrorRef.current = shouldMirror;
       rendererRefSetMirrored(refs.current.renderer, shouldMirror);
 
+      refs.current.clothing.resetSmoother();
+      refs.current.occlusion.reset();
       setCameraActive(true);
       startLoop();
     } catch (err) {
@@ -413,6 +435,8 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
     lastPoseRef.current = null;
     warpRef.current = null;
     occlusionRef.current = null;
+    refs.current.clothing.resetSmoother();
+    refs.current.occlusion.reset();
     setCameraActive(false);
     setTracking('idle');
   }, [stopLoop]);
@@ -425,6 +449,18 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
       const facingUser = refs.current.camera.getFacingMode() === 'user';
       mirrorRef.current = facingUser;
       rendererRefSetMirrored(refs.current.renderer, facingUser);
+      startLoop();
+    } catch (err) {
+      setError(mapCameraError(err));
+    }
+  }, [startLoop, stopLoop]);
+
+  const switchCameraDevice = useCallback(async (deviceId: string) => {
+    setSelectedCameraId(deviceId);
+    if (!refs.current.camera.isActive()) return;
+    try {
+      stopLoop();
+      await refs.current.camera.switchDevice(deviceId);
       startLoop();
     } catch (err) {
       setError(mapCameraError(err));
@@ -571,10 +607,13 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
     error,
     debugMode,
     metrics,
+    availableCameras,
+    selectedCameraId,
     // actions
     startCamera,
     stopCamera,
     switchCamera,
+    switchCameraDevice,
     loadGarmentFile,
     loadGarmentUrl,
     removeGarment,

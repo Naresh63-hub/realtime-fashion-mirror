@@ -18,6 +18,7 @@ export interface CameraConfig {
   height: number;
   facingMode: FacingMode;
   frameRate: number;
+  deviceId?: string;
 }
 
 export type CameraErrorCode =
@@ -308,6 +309,8 @@ export interface TryOnResult {
   jobId: string;
   personImageUrl: string;
   resultImageUrl: string;
+  canvasImageUrl?: string;
+  aiImageUrl?: string;
   garmentImageUrl: string;
   garmentName: string;
   garmentCategory: ClothingCategory;
@@ -315,6 +318,36 @@ export interface TryOnResult {
   modelUsed: string;
   confidence?: number;
 }
+
+export interface LiveSessionInfo {
+  sessionId: string;
+  status: string;
+  createdAt: number;
+  maxInactivitySeconds: number;
+  guidance: string;
+}
+
+export interface LiveFrameResponse {
+  sessionId: string;
+  status: 'processed' | 'busy' | 'unconfigured' | 'failed';
+  dropped: boolean;
+  message: string;
+  resultImageUrl?: string;
+  canFallbackToCanvas: boolean;
+}
+
+export interface LiveSessionStatus {
+  sessionId: string;
+  status: string;
+  isProcessing: boolean;
+  activeJobId?: string;
+  jobProgress: number;
+  latestResultUrl?: string;
+  framesReceived: number;
+  framesDropped: number;
+  aiConfigured: boolean;
+}
+
 
 export interface SavedLook {
   id: string;

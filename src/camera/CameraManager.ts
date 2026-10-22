@@ -51,6 +51,17 @@ export class CameraManager {
     );
   }
 
+  /** Enumerates all available video input devices (webcams, front/rear cameras). */
+  static async getVideoDevices(): Promise<MediaDeviceInfo[]> {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) return [];
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      return devices.filter((d) => d.kind === 'videoinput');
+    } catch {
+      return [];
+    }
+  }
+
   async start(video: HTMLVideoElement): Promise<void> {
     if (this.stream) this.stop();
 
@@ -63,14 +74,21 @@ export class CameraManager {
 
     this.video = video;
 
+    const videoConstraints: MediaTrackConstraints = {
+      width: { ideal: this.config.width },
+      height: { ideal: this.config.height },
+      frameRate: { ideal: this.config.frameRate, max: APP_CONFIG.CAMERA.MAX_FPS },
+    };
+
+    if (this.config.deviceId) {
+      videoConstraints.deviceId = { exact: this.config.deviceId };
+    } else {
+      videoConstraints.facingMode = { ideal: this.config.facingMode };
+    }
+
     const constraints: MediaStreamConstraints = {
       audio: false,
-      video: {
-        width: { ideal: this.config.width },
-        height: { ideal: this.config.height },
-        facingMode: { ideal: this.config.facingMode },
-        frameRate: { ideal: this.config.frameRate, max: APP_CONFIG.CAMERA.MAX_FPS },
-      },
+      video: videoConstraints,
     };
 
     try {
@@ -120,6 +138,15 @@ export class CameraManager {
     if (!this.video) return;
     const next: FacingMode = this.config.facingMode === 'user' ? 'environment' : 'user';
     this.config.facingMode = next;
+    this.config.deviceId = undefined;
+    const video = this.video;
+    this.stop();
+    await this.start(video);
+  }
+
+  async switchDevice(deviceId: string): Promise<void> {
+    if (!this.video) return;
+    this.config.deviceId = deviceId;
     const video = this.video;
     this.stop();
     await this.start(video);

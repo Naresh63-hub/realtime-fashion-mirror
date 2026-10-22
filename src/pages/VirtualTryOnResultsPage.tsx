@@ -19,12 +19,17 @@ import {
   UploadCloud,
   ArrowRight,
   Share2,
+  Zap,
+  Cpu,
+  AlertCircle,
+  Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
 import { StorageService } from '../services/storageService';
 import { FULL_PRODUCT_CATALOG } from '../services/garmentCatalog';
 import { VirtualTryOnService, type TryOnFitOptions } from '../services/virtualTryOnService';
+import type { TryOnResult, TryOnJobStatus } from '../types';
 
 export const VirtualTryOnResultsPage: React.FC = () => {
   const {
@@ -38,6 +43,23 @@ export const VirtualTryOnResultsPage: React.FC = () => {
   const [sliderPos, setSliderPos] = useState(50); // 0 to 100%
   const [viewMode, setViewMode] = useState<'slider' | 'side-by-side'>('slider');
   const [showFitStudio, setShowFitStudio] = useState(true);
+
+  // Active layer for comparison: 'canvas' (instant) vs 'ai' (diffusion)
+  const [activeLayer, setActiveLayer] = useState<'canvas' | 'ai'>(
+    lastResult?.aiImageUrl ? 'ai' : 'canvas'
+  );
+  const [backendConfig, setBackendConfig] = useState<{
+    configured: boolean;
+    provider: string;
+    modelName: string;
+    guidance: string;
+  } | null>(null);
+  const [isGeneratingCloudAI, setIsGeneratingCloudAI] = useState(false);
+
+  // Fetch backend VTON configuration on mount
+  useEffect(() => {
+    VirtualTryOnService.getBackendVTONConfig().then(setBackendConfig);
+  }, []);
 
   // Use the user's actual uploaded photograph or live capture
   const personImg = lastResult?.personImageUrl || '';
@@ -240,6 +262,80 @@ export const VirtualTryOnResultsPage: React.FC = () => {
     }
   };
 
+  const handleGenerateCloudAI = async () => {
+    if (!personImg) return;
+    if (!backendConfig?.configured) {
+      toast.error(
+        'Cloud Generative AI is unconfigured. Set VTON_API_KEY (e.g. Replicate token) in backend .env to enable IDM-VTON diffusion.',
+        { duration: 6000 }
+      );
+      return;
+    }
+
+    try {
+      setIsGeneratingCloudAI(true);
+      toast.loading('Submitting to IDM-VTON Diffusion model...', { id: 'cloud-vton-gen' });
+
+      const job = await VirtualTryOnService.generateTryOn({
+        personImage: personImg,
+        garmentImage: garment.imageUrl,
+        garmentName: garment.name,
+        category: garment.category,
+        modelMode: 'cloud-genai',
+      });
+
+      if (job.status === 'failed') {
+        throw new Error(job.error || 'Cloud AI submission failed.');
+      }
+
+      let status: TryOnJobStatus = job.status;
+      let attempts = 0;
+      while (status !== 'succeeded' && status !== 'failed' && attempts < 45) {
+        await new Promise((res) => setTimeout(res, 1800));
+        const updated = await VirtualTryOnService.getJobStatus(job.id);
+        status = updated.status;
+        attempts++;
+        if (updated.progress > 50) {
+          toast.loading(`Synthesizing photoreal drape & fabric texture (${updated.progress}%)...`, {
+            id: 'cloud-vton-gen',
+          });
+        }
+      }
+
+      if (status === 'succeeded') {
+        const res = await VirtualTryOnService.retrieveResult(job.id);
+        if (res.resultImageUrl) {
+          const updatedResult: TryOnResult = {
+            ...(lastResult || {
+              jobId: job.id,
+              personImageUrl: personImg,
+              garmentImageUrl: garment.imageUrl,
+              garmentName: garment.name,
+              garmentCategory: garment.category,
+              timestamp: Date.now(),
+              modelUsed: res.modelUsed,
+            }),
+            resultImageUrl: res.resultImageUrl,
+            aiImageUrl: res.resultImageUrl,
+            canvasImageUrl: lastResult?.canvasImageUrl || currentResultImg,
+          };
+          setLastResult(updatedResult);
+          setActiveLayer('ai');
+          setCurrentResultImg(res.resultImageUrl);
+          toast.success('✨ Photoreal Generative AI try-on synthesized successfully!', { id: 'cloud-vton-gen' });
+        }
+      } else {
+        const failedJob = await VirtualTryOnService.getJobStatus(job.id);
+        throw new Error(failedJob.error || 'Diffusion inference failed.');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'AI try-on generation failed.';
+      toast.error(msg, { id: 'cloud-vton-gen' });
+    } finally {
+      setIsGeneratingCloudAI(false);
+    }
+  };
+
   const handleShareLook = () => {
     const params = new URLSearchParams({
       garment: garment.id,
@@ -383,6 +479,78 @@ export const VirtualTryOnResultsPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Visual Comparison Area (8 cols) */}
         <div className="lg:col-span-8 space-y-5">
+          {/* Layer Switcher & AI Synthesis Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-900/70 p-3.5 rounded-2xl border border-white/10 backdrop-blur-xl">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-gray-400">Viewing Layer:</span>
+              <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveLayer('canvas');
+                    if (lastResult?.canvasImageUrl) {
+                      setCurrentResultImg(lastResult.canvasImageUrl);
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
+                    activeLayer === 'canvas'
+                      ? 'bg-violet-600 text-white shadow-sm'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <Zap className="h-3 w-3 text-amber-400" />
+                  <span>Instant Canvas</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (lastResult?.aiImageUrl) {
+                      setActiveLayer('ai');
+                      setCurrentResultImg(lastResult.aiImageUrl);
+                    } else {
+                      handleGenerateCloudAI();
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
+                    activeLayer === 'ai'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <Cpu className="h-3 w-3 text-purple-400" />
+                  <span>{lastResult?.aiImageUrl ? 'IDM-VTON Diffusion' : 'Generate AI Still'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {!lastResult?.aiImageUrl && (
+                <button
+                  type="button"
+                  onClick={handleGenerateCloudAI}
+                  disabled={isGeneratingCloudAI}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-md shadow-purple-900/30 hover:opacity-90 transition disabled:opacity-50"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>{isGeneratingCloudAI ? 'Synthesizing Diffusion...' : 'Generate AI Diffusion'}</span>
+                </button>
+              )}
+              {backendConfig && (
+                <span
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    backendConfig.configured
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                  }`}
+                  title={backendConfig.guidance}
+                >
+                  {backendConfig.configured ? 'AI Ready' : 'AI Unconfigured'}
+                </span>
+              )}
+            </div>
+          </div>
+
           {viewMode === 'slider' ? (
             <div className="relative aspect-[3/4] max-h-[600px] w-full overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl select-none backdrop-blur-xl">
               {/* After (Generated result) - background layer */}
@@ -438,18 +606,74 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                 Original Photo
               </div>
               <div className="pointer-events-none absolute bottom-4 right-4 rounded-xl bg-violet-600/80 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md border border-violet-400/20">
-                Virtual Try-On
+                {activeLayer === 'ai' ? 'IDM-VTON Diffusion Still' : 'Instant Canvas Try-On'}
+              </div>
+            </div>
+          ) : lastResult?.aiImageUrl ? (
+            /* 3-Way Side-by-Side Comparison: Original vs Canvas vs AI Diffusion */
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="rounded-3xl border border-white/10 bg-black/60 p-3 flex flex-col items-center backdrop-blur-xl">
+                <span className="text-xs text-gray-400 mb-2 font-semibold">1. Original Photo</span>
+                <img src={personImg} alt="Original" className="max-h-[460px] object-contain rounded-2xl" />
+              </div>
+              <div className="rounded-3xl border border-violet-500/30 bg-black/60 p-3 flex flex-col items-center backdrop-blur-xl">
+                <div className="flex items-center justify-between w-full mb-2 px-1">
+                  <span className="text-xs text-violet-400 font-semibold flex items-center gap-1">
+                    <Zap className="h-3 w-3 text-amber-400" />
+                    2. Instant Canvas Drape
+                  </span>
+                  <span className="text-[10px] bg-violet-600/30 text-violet-300 px-1.5 py-0.5 rounded font-mono">Local</span>
+                </div>
+                <img
+                  src={lastResult.canvasImageUrl || currentResultImg}
+                  alt="Instant Canvas Result"
+                  className="max-h-[460px] object-contain rounded-2xl"
+                />
+              </div>
+              <div className="rounded-3xl border border-purple-500/40 bg-black/60 p-3 flex flex-col items-center backdrop-blur-xl shadow-lg shadow-purple-900/20">
+                <div className="flex items-center justify-between w-full mb-2 px-1">
+                  <span className="text-xs text-purple-400 font-semibold flex items-center gap-1">
+                    <Cpu className="h-3 w-3 text-purple-400" />
+                    3. Generative AI (IDM-VTON)
+                  </span>
+                  <span className="text-[10px] bg-purple-600/30 text-purple-300 px-1.5 py-0.5 rounded font-mono">Diffusion</span>
+                </div>
+                <img
+                  src={lastResult.aiImageUrl}
+                  alt="Generative AI Result"
+                  className="max-h-[460px] object-contain rounded-2xl"
+                />
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="rounded-3xl border border-white/10 bg-black/60 p-3 flex flex-col items-center backdrop-blur-xl">
-                <span className="text-xs text-gray-400 mb-2 font-semibold">Original Photograph</span>
-                <img src={personImg} alt="Original" className="max-h-[480px] object-contain rounded-2xl" />
+                <span className="text-xs text-gray-400 mb-2 font-semibold">1. Original Photo</span>
+                <img src={personImg} alt="Original" className="max-h-[460px] object-contain rounded-2xl" />
               </div>
               <div className="rounded-3xl border border-violet-500/40 bg-black/60 p-3 flex flex-col items-center backdrop-blur-xl">
-                <span className="text-xs text-violet-400 mb-2 font-semibold">Virtual Try-On Result</span>
-                <img src={currentResultImg} alt="Try-On Result" className="max-h-[480px] object-contain rounded-2xl" />
+                <span className="text-xs text-violet-400 mb-2 font-semibold flex items-center gap-1">
+                  <Zap className="h-3 w-3 text-amber-400" />
+                  2. Instant Canvas Result
+                </span>
+                <img src={currentResultImg} alt="Try-On Result" className="max-h-[460px] object-contain rounded-2xl" />
+              </div>
+              <div className="rounded-3xl border border-dashed border-purple-500/30 bg-purple-950/20 p-5 flex flex-col items-center justify-center text-center space-y-3 backdrop-blur-xl">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-600/20 text-purple-400 border border-purple-500/30">
+                  <Sparkles className="h-6 w-6" />
+                </div>
+                <h4 className="text-xs font-bold text-white">Compare with AI Diffusion</h4>
+                <p className="text-[11px] text-gray-400 max-w-[200px]">
+                  Synthesize deep cloth folds and realistic fabric shadows using IDM-VTON.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleGenerateCloudAI}
+                  disabled={isGeneratingCloudAI}
+                  className="mt-2 rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white shadow-lg hover:bg-purple-500 transition disabled:opacity-50"
+                >
+                  {isGeneratingCloudAI ? 'Synthesizing...' : 'Generate 3-Way AI Still'}
+                </button>
               </div>
             </div>
           )}

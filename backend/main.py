@@ -12,6 +12,11 @@ logger = logging.getLogger(__name__)
 
 from backend.models import (
     HealthResponse,
+    LiveFrameSubmitRequest,
+    LiveFrameSubmitResponse,
+    LiveSessionCreateResponse,
+    LiveSessionStatusResponse,
+    TryOnConfigResponse,
     TryOnJobCreateRequest,
     TryOnJobResponse,
     UrlExtractRequest,
@@ -22,6 +27,13 @@ from backend.services.vton import (
     cancel_job,
     create_tryon_job,
     get_job_status,
+    get_vton_config,
+)
+from backend.services.live_vton import (
+    create_live_session,
+    submit_live_frame,
+    get_live_session_status,
+    close_live_session,
 )
 
 
@@ -66,6 +78,16 @@ def health_check():
             "cloud_genai_adapter",
         ],
     )
+
+
+@app.get("/api/tryon/config", response_model=TryOnConfigResponse)
+def get_tryon_configuration():
+    """
+    Returns virtual try-on configuration status and external provider readiness.
+    Used by frontend to discover whether real Cloud Generative AI (IDM-VTON) is configured
+    or whether Instant Canvas Try-On is the primary mode.
+    """
+    return get_vton_config()
 
 
 @app.post("/api/products/extract", response_model=UrlExtractResponse)
@@ -135,6 +157,44 @@ def cancel_tryon_job(job_id: str):
             detail=f"Job '{job_id}' is not in a cancellable state or does not exist.",
         )
     return {"message": f"Job '{job_id}' successfully cancelled.", "job_id": job_id}
+
+
+# -----------------------------------------------------------------------------
+# Live AI Virtual Try-On Session Endpoints
+# -----------------------------------------------------------------------------
+
+@app.post("/api/live/sessions", response_model=LiveSessionCreateResponse, status_code=status.HTTP_201_CREATED)
+def start_live_session():
+    """Initializes a new live AI try-on frame sampling session."""
+    return create_live_session()
+
+
+@app.get("/api/live/sessions/{session_id}", response_model=LiveSessionStatusResponse)
+def get_session_status(session_id: str):
+    """Retrieves session status, active frame progress, and latest AI synthesized output."""
+    status_resp = get_live_session_status(session_id)
+    if not status_resp:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Live session '{session_id}' not found or has expired.",
+        )
+    return status_resp
+
+
+@app.post("/api/live/sessions/{session_id}/frame", response_model=LiveFrameSubmitResponse)
+def process_live_frame(session_id: str, payload: LiveFrameSubmitRequest):
+    """
+    Submits a sampled live camera frame for AI enhancement.
+    Applies concurrency protection: in-flight frames drop subsequent frames to prevent queue backlog.
+    """
+    return submit_live_frame(session_id, payload)
+
+
+@app.delete("/api/live/sessions/{session_id}")
+def end_live_session(session_id: str):
+    """Closes live session and cancels active in-flight processing."""
+    closed = close_live_session(session_id)
+    return {"message": "Session closed", "session_id": session_id, "closed": closed}
 
 
 if __name__ == "__main__":

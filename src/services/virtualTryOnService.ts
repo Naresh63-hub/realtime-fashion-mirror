@@ -18,7 +18,14 @@
  *      with polling and fallback.
  */
 
-import type { TryOnJob, TryOnResult, ClothingCategory } from '../types';
+import type {
+  TryOnJob,
+  TryOnResult,
+  ClothingCategory,
+  LiveSessionInfo,
+  LiveFrameResponse,
+  LiveSessionStatus,
+} from '../types';
 import { ClothingCategory as CC } from '../types';
 import { ImagePoseService } from './imagePoseService';
 import { getBackendApiUrl } from './productExtractor';
@@ -68,6 +75,38 @@ export class VirtualTryOnService {
   }
 
   /**
+   * Fetches virtual try-on configuration and provider readiness from the backend.
+   */
+  static async getBackendVTONConfig(): Promise<{
+    configured: boolean;
+    provider: string;
+    modelName: string;
+    guidance: string;
+  }> {
+    try {
+      const backendUrl = getBackendApiUrl();
+      const resp = await fetch(`${backendUrl}/api/tryon/config`);
+      if (resp.ok) {
+        const data = await resp.json();
+        return {
+          configured: Boolean(data.configured),
+          provider: data.provider || 'none',
+          modelName: data.model_name || 'IDM-VTON',
+          guidance: data.guidance || '',
+        };
+      }
+    } catch {
+      // Backend not running or unreachable
+    }
+    return {
+      configured: false,
+      provider: 'none',
+      modelName: 'Instant Canvas (Local)',
+      guidance: 'Backend service is offline or unconfigured. Instant Canvas Try-On is active.',
+    };
+  }
+
+  /**
    * Submits a virtual try-on job for processing.
    */
   static async generateTryOn(request: TryOnRequest): Promise<TryOnJob> {
@@ -90,7 +129,7 @@ export class VirtualTryOnService {
       garmentImageUrl: request.garmentImage,
       garmentName: request.garmentName,
       garmentCategory: request.category || CC.T_SHIRT,
-      modelName: mode === 'client-high-res' ? 'Client High-Res Mesh Warp Engine' : 'Cloud GenAI VTON Model',
+      modelName: mode === 'client-high-res' ? 'Client High-Res Mesh Warp Engine' : 'IDM-VTON (Diffusion)',
     };
 
     setBoundedJob(job);
@@ -113,13 +152,25 @@ export class VirtualTryOnService {
         if (resp.ok) {
           const data = await resp.json();
           job.id = data.job_id;
-          job.status = 'processing';
-          job.progress = data.progress || 35;
+          job.status = data.status;
+          job.progress = data.progress || 10;
+          job.modelName = data.model_name || 'IDM-VTON (Diffusion)';
+          if (data.error) job.error = data.error;
+          if (data.result_image_url) job.resultImageUrl = data.result_image_url;
+          setBoundedJob(job);
+          return job;
+        } else {
+          const errData = await resp.json().catch(() => ({ detail: 'Failed to submit cloud try-on job' }));
+          job.status = 'failed';
+          job.error = errData.detail || 'Cloud Generative AI submission failed.';
           setBoundedJob(job);
           return job;
         }
       } catch {
-        // Backend not reachable; fallback to client engine
+        job.status = 'failed';
+        job.error = 'Backend server unreachable. Please verify FastAPI backend is running at http://localhost:8000.';
+        setBoundedJob(job);
+        return job;
       }
     }
 
@@ -156,7 +207,7 @@ export class VirtualTryOnService {
   static async getJobStatus(jobId: string): Promise<TryOnJob> {
     const local = activeJobs.get(jobId);
     if (local) {
-      if (local.modelName.includes('Cloud')) {
+      if (local.modelName.includes('Cloud') || local.modelName.includes('Diffusion') || local.id.startsWith('vton_')) {
         try {
           const backendUrl = getBackendApiUrl();
           const resp = await fetch(`${backendUrl}/api/tryon/jobs/${jobId}`);
@@ -167,6 +218,10 @@ export class VirtualTryOnService {
             if (data.result_image_url) {
               local.resultImageUrl = data.result_image_url;
             }
+            if (data.error) {
+              local.error = data.error;
+            }
+            local.updatedAt = Date.now();
           }
         } catch {
           // Keep local state
@@ -184,19 +239,23 @@ export class VirtualTryOnService {
   static async retrieveResult(jobId: string): Promise<TryOnResult> {
     const job = await this.getJobStatus(jobId);
     if (job.status !== 'succeeded' || !job.resultImageUrl) {
-      throw new Error(`Job has not succeeded yet (status: ${job.status}).`);
+      throw new Error(job.error || `Job has not succeeded yet (status: ${job.status}).`);
     }
+
+    const isCloud = job.modelName.includes('Diffusion') || job.modelName.includes('Cloud');
 
     return {
       jobId: job.id,
       personImageUrl: job.personImageUrl,
       resultImageUrl: job.resultImageUrl,
+      canvasImageUrl: isCloud ? undefined : job.resultImageUrl,
+      aiImageUrl: isCloud ? job.resultImageUrl : undefined,
       garmentImageUrl: job.garmentImageUrl,
       garmentName: job.garmentName,
       garmentCategory: job.garmentCategory,
       timestamp: job.updatedAt,
       modelUsed: job.modelName,
-      confidence: 0.94,
+      confidence: isCloud ? 0.98 : 0.94,
     };
   }
 
@@ -212,6 +271,137 @@ export class VirtualTryOnService {
       return true;
     }
     return false;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Live AI Virtual Try-On Session Methods
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Initializes a live AI try-on frame sampling session.
+   */
+  static async createLiveSession(): Promise<LiveSessionInfo> {
+    try {
+      const backendUrl = getBackendApiUrl();
+      const resp = await fetch(`${backendUrl}/api/live/sessions`, {
+        method: 'POST',
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        return {
+          sessionId: data.session_id,
+          status: data.status,
+          createdAt: data.created_at,
+          maxInactivitySeconds: data.max_inactivity_seconds,
+          guidance: data.guidance || '',
+        };
+      }
+    } catch {
+      // Backend unreachable
+    }
+    return {
+      sessionId: `local_${Date.now()}`,
+      status: 'unconfigured',
+      createdAt: Date.now() / 1000,
+      maxInactivitySeconds: 600,
+      guidance: 'Backend is offline. Real-time Canvas 2D tracker operates locally.',
+    };
+  }
+
+  /**
+   * Retrieves the current live session status and latest AI synthesized frame.
+   */
+  static async getLiveSessionStatus(sessionId: string): Promise<LiveSessionStatus> {
+    try {
+      const backendUrl = getBackendApiUrl();
+      const resp = await fetch(`${backendUrl}/api/live/sessions/${sessionId}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        return {
+          sessionId: data.session_id,
+          status: data.status,
+          isProcessing: Boolean(data.is_processing),
+          activeJobId: data.active_job_id,
+          jobProgress: data.job_progress || 0,
+          latestResultUrl: data.latest_result_url,
+          framesReceived: data.frames_received || 0,
+          framesDropped: data.frames_dropped || 0,
+          aiConfigured: Boolean(data.ai_configured),
+        };
+      }
+    } catch {
+      // Backend error
+    }
+    return {
+      sessionId,
+      status: 'offline',
+      isProcessing: false,
+      jobProgress: 0,
+      framesReceived: 0,
+      framesDropped: 0,
+      aiConfigured: false,
+    };
+  }
+
+  /**
+   * Submits a sampled live video frame for AI enhancement.
+   * Discards frame cleanly if in-flight processing is active.
+   */
+  static async submitLiveFrame(
+    sessionId: string,
+    frameImage: string,
+    garmentImage: string,
+    garmentName: string = 'Garment',
+    category: ClothingCategory | string = CC.T_SHIRT
+  ): Promise<LiveFrameResponse> {
+    try {
+      const backendUrl = getBackendApiUrl();
+      const resp = await fetch(`${backendUrl}/api/live/sessions/${sessionId}/frame`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          frame_image: frameImage,
+          garment_image: garmentImage,
+          garment_name: garmentName,
+          category,
+        }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        return {
+          sessionId: data.session_id,
+          status: data.status,
+          dropped: Boolean(data.dropped),
+          message: data.message || '',
+          resultImageUrl: data.result_image_url,
+          canFallbackToCanvas: Boolean(data.can_fallback_to_canvas),
+        };
+      }
+    } catch {
+      // Backend error
+    }
+    return {
+      sessionId,
+      status: 'unconfigured',
+      dropped: false,
+      message: 'Cloud AI is unconfigured or unreachable. Canvas 2D tracker active.',
+      canFallbackToCanvas: true,
+    };
+  }
+
+  /**
+   * Closes a live session and cleans up resources on the backend.
+   */
+  static async closeLiveSession(sessionId: string): Promise<boolean> {
+    try {
+      const backendUrl = getBackendApiUrl();
+      const resp = await fetch(`${backendUrl}/api/live/sessions/${sessionId}`, {
+        method: 'DELETE',
+      });
+      return resp.ok;
+    } catch {
+      return false;
+    }
   }
 
   /**

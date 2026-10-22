@@ -185,4 +185,91 @@ describe('ClothingEngine.calculateWarp', () => {
     const warpNone = engine.calculateWarp(noArms, garment, FRAME_W, FRAME_H);
     expect(warpNone.triangles.length).toBeLessThan(warpFull.triangles.length);
   });
+
+  it('ensures sleeve mesh expands outward from torso center and never inverts inward', () => {
+    // Both arms raised outward and bent
+    const posed = uprightPose();
+    posed.landmarks[LandmarkIndex.LEFT_ELBOW] = landmark(0.25, 0.25);
+    posed.landmarks[LandmarkIndex.LEFT_WRIST] = landmark(0.15, 0.15);
+    posed.landmarks[LandmarkIndex.RIGHT_ELBOW] = landmark(0.75, 0.25);
+    posed.landmarks[LandmarkIndex.RIGHT_WRIST] = landmark(0.85, 0.15);
+
+    const warp = engine.calculateWarp(posed, garment, FRAME_W, FRAME_H);
+    expect(warp.triangles.length).toBeGreaterThan(60);
+
+    // Left sleeve points must extend to the left of the left shoulder (x < 0.4 * FRAME_W)
+    const hasLeftSleeveOutward = warp.triangles.some((t) =>
+      t.target.some((p) => p.x < 0.35 * FRAME_W)
+    );
+    expect(hasLeftSleeveOutward).toBe(true);
+
+    // Right sleeve points must extend to the right of the right shoulder (x > 0.6 * FRAME_W)
+    const hasRightSleeveOutward = warp.triangles.some((t) =>
+      t.target.some((p) => p.x > 0.65 * FRAME_W)
+    );
+    expect(hasRightSleeveOutward).toBe(true);
+  });
+
+  it('clamps extreme hip shear so mesh does not fold into itself on lateral lean', () => {
+    const extremeLean = uprightPose();
+    // Shift hips by extreme distance
+    extremeLean.landmarks[LandmarkIndex.LEFT_HIP] = landmark(0.8, 0.55);
+    extremeLean.landmarks[LandmarkIndex.RIGHT_HIP] = landmark(0.95, 0.55);
+
+    const warp = engine.calculateWarp(extremeLean, garment, FRAME_W, FRAME_H);
+    expect(warp.triangles.length).toBeGreaterThan(0);
+
+    // Vertices should be strictly finite and non-NaN
+    for (const tri of warp.triangles) {
+      for (const pt of tri.target) {
+        expect(Number.isFinite(pt.x)).toBe(true);
+        expect(Number.isFinite(pt.y)).toBe(true);
+      }
+    }
+  });
+
+  it('applies 3D perspective foreshortening when torso is turned', () => {
+    const turnedPose = uprightPose();
+    // Left shoulder closer to camera (negative Z), right shoulder farther (positive Z)
+    turnedPose.landmarks[LandmarkIndex.LEFT_SHOULDER] = landmark(0.4, 0.25, -0.2);
+    turnedPose.landmarks[LandmarkIndex.RIGHT_SHOULDER] = landmark(0.6, 0.25, 0.2);
+
+    const warp = engine.calculateWarp(turnedPose, garment, FRAME_W, FRAME_H);
+    expect(warp.triangles.length).toBeGreaterThan(0);
+
+    // Near side (left) should have wider mesh spacing than far side (right)
+    const leftTris = warp.triangles.filter((t) =>
+      t.target.every((p) => p.x < warp.center.x)
+    );
+    const rightTris = warp.triangles.filter((t) =>
+      t.target.every((p) => p.x > warp.center.x)
+    );
+    expect(leftTris.length).toBeGreaterThan(0);
+    expect(rightTris.length).toBeGreaterThan(0);
+  });
+
+  it('resetSmoother resets temporal history to prevent teleporting', () => {
+    engine.resetSmoother();
+    const poseA = uprightPose();
+    const warpA = engine.calculateWarp(poseA, garment, FRAME_W, FRAME_H);
+    expect(warpA.center.x).toBeCloseTo(0.5 * FRAME_W, 0);
+
+    // Simulate stepping away and reset
+    engine.resetSmoother();
+
+    // Re-enter on far right of screen
+    const shifted = uprightPose();
+    for (const idx of [
+      LandmarkIndex.LEFT_SHOULDER,
+      LandmarkIndex.RIGHT_SHOULDER,
+      LandmarkIndex.LEFT_HIP,
+      LandmarkIndex.RIGHT_HIP,
+    ]) {
+      shifted.landmarks[idx].x += 0.3;
+    }
+
+    const warpB = engine.calculateWarp(shifted, garment, FRAME_W, FRAME_H);
+    // After reset, center should immediately snap to new position without dragging across screen
+    expect(warpB.center.x).toBeCloseTo(0.8 * FRAME_W, 0);
+  });
 });

@@ -38,6 +38,13 @@ import { removeBackground } from './backgroundRemoval';
 import { classifyGarment } from './classifier';
 import { detectAnchors } from './anchorDetection';
 import { TrackingSmoother } from '../utils/smoothing';
+import {
+  torsoDepth,
+  shouldApplyPerspective,
+  depthAt,
+  perspectiveFactor,
+  sleeveAnisotropy,
+} from './warpMath';
 
 type WorkerResultPayload = {
   width: number;
@@ -369,13 +376,15 @@ export class ClothingEngine {
     const lh = lm[LandmarkIndex.LEFT_HIP];
     const rh = lm[LandmarkIndex.RIGHT_HIP];
 
-    // Torso landmarks must be present AND reasonably visible — otherwise
-    // the garment would chase noise or freeze in a wrong pose.
+    // Torso landmarks (both shoulders and both hips) must be present and visible (>= 0.3).
+    // When a user steps out of frame or torso tracking is lost, return an empty warp
+    // so stale clothing never freezes or floats in empty space.
     const MIN_TORSO_VISIBILITY = 0.3;
     const torsoVisible =
       (ls?.visibility ?? 0) >= MIN_TORSO_VISIBILITY &&
       (rs?.visibility ?? 0) >= MIN_TORSO_VISIBILITY &&
-      (lh?.visibility ?? 0) >= MIN_TORSO_VISIBILITY;
+      (lh?.visibility ?? 0) >= MIN_TORSO_VISIBILITY &&
+      (rh?.visibility ?? 0) >= MIN_TORSO_VISIBILITY;
     if (!ls || !rs || !lh || !rh || !torsoVisible) {
       return { triangles: [], center: { x: 0, y: 0 } };
     }
@@ -420,6 +429,12 @@ export class ClothingEngine {
 
     // Hip shear: horizontal hip offset from the shoulder line (bending).
     const hipShear = dot(sub(bodyHipMid, stabilizedShoulderMid), { x: -bAxisY.y, y: bAxisY.x });
+    // Clamp normalized shear to [-0.45, 0.45] to prevent triangular mesh collapse on lateral leans
+    const clampedShearRatio = Math.max(-0.45, Math.min(0.45, hipShear / bodyTorsoLen));
+
+    // 3D perspective foreshortening derived from MediaPipe landmark depth
+    const tDepth = torsoDepth(ls.z ?? 0, rs.z ?? 0, lh.z ?? 0, rh.z ?? 0);
+    const apply3D = shouldApplyPerspective(true, tDepth.spread, 0.03);
 
     /**
      * Re-project a garment anchor-space point onto the body.
@@ -431,16 +446,23 @@ export class ClothingEngine {
       const uLocal = u - 0.5; // 0 at shoulder mid
       const vLocal = v;
 
+      // 3D perspective scaling across torso rotation
+      let pFactor = 1.0;
+      if (apply3D) {
+        const localZ = depthAt(ls.z ?? 0, rs.z ?? 0, lh.z ?? 0, rh.z ?? 0, u, v);
+        pFactor = perspectiveFactor(localZ, tDepth.meanZ, 0.28);
+      }
+
       // Body-space offsets (screen px, in torso frame).
-      const bx = uLocal * bodyShoulderSpan * 1.15; // slight shoulder flare
+      const bx = uLocal * stabilizedShoulderSpan * 1.15 * pFactor; // slight shoulder flare + 3D depth
       const by = vLocal * bodyTorsoLen * 1.05; // hem reaches just past hips
 
       // Shear grows with vertical distance below the shoulders (bend).
-      const shear = (hipShear / bodyTorsoLen) * by * 0.6;
+      const shear = clampedShearRatio * by * 0.6;
 
       return {
-        x: bodyShoulderMid.x + bAxisX.x * (bx + shear) + bAxisY.x * by,
-        y: bodyShoulderMid.y + bAxisX.y * (bx + shear) + bAxisY.y * by,
+        x: stabilizedShoulderMid.x + bAxisX.x * (bx + shear) + bAxisY.x * by,
+        y: stabilizedShoulderMid.y + bAxisX.y * (bx + shear) + bAxisY.y * by,
       };
     };
 
@@ -488,14 +510,30 @@ export class ClothingEngine {
     }
 
     // Sleeves: one mesh per side with visible elbow bend.
+    const halfSpan = stabilizedShoulderSpan / 2;
+    const stabLS: Point = {
+      x: stabilizedShoulderMid.x - bAxisX.x * halfSpan,
+      y: stabilizedShoulderMid.y - bAxisX.y * halfSpan,
+    };
+    const stabRS: Point = {
+      x: stabilizedShoulderMid.x + bAxisX.x * halfSpan,
+      y: stabilizedShoulderMid.y + bAxisX.y * halfSpan,
+    };
+
     for (const side of ['left', 'right'] as const) {
       const sleeveTriangles = this.buildSleeveTriangles(
-        A, side, LS, RS, LE, RE, LW, RW, bodyShoulderSpan, gShoulderSpan
+        A, side, stabLS, stabRS, LE, RE, LW, RW, stabilizedShoulderSpan, gShoulderSpan, stabilizedShoulderMid
       );
       triangles.push(...sleeveTriangles);
     }
 
-    return { triangles, center: bodyShoulderMid };
+    return {
+      triangles,
+      center: {
+        x: stabilizedShoulderMid.x + bAxisY.x * (bodyTorsoLen * 0.45),
+        y: stabilizedShoulderMid.y + bAxisY.y * (bodyTorsoLen * 0.45),
+      },
+    };
   }
 
   /**
@@ -509,7 +547,8 @@ export class ClothingEngine {
     LE: Point | null, RE: Point | null,
     LW: Point | null, RW: Point | null,
     bodyShoulderSpan: number,
-    gShoulderSpan: number
+    gShoulderSpan: number,
+    bodyShoulderMid: Point
   ): MeshTriangle[] {
     const gTip = side === 'left' ? A.leftSleeve : A.rightSleeve;
     const gBottom = side === 'left' ? A.leftSleeveBottom : A.rightSleeveBottom;
@@ -530,11 +569,19 @@ export class ClothingEngine {
 
     // Body-frame mapping.
     const armDir = normalize(sub(elbow, shoulder));
-    const armNormal: Point = { x: -armDir.y, y: armDir.x };
+    let armNormal: Point = { x: -armDir.y, y: armDir.x };
 
-    // Sleeve width scales with the torso scale factor.
+    // Anatomical orientation check: ensure armNormal expands outward from torso center
+    // and never inside the chest cavity or inverted.
+    const outwardDir = normalize(sub(shoulder, bodyShoulderMid));
+    if (dot(armNormal, outwardDir) < 0) {
+      armNormal = { x: -armNormal.x, y: -armNormal.y };
+    }
+
+    // Sleeve width scales with the torso scale factor and adapts to elbow bend
+    const anisotropy = sleeveAnisotropy(shoulder, elbow, wrist, 0.12);
     const scale = gShoulderSpan > 0 ? bodyShoulderSpan / gShoulderSpan : 1;
-    const sleeveWidth = dist(topInner, topOuter) * scale * 0.85;
+    const sleeveWidth = (dist(topInner, topOuter) * scale * 0.85) / Math.sqrt(anisotropy);
 
     const armLen = dist(shoulder, elbow);
     const forearmEnd = wrist
@@ -596,7 +643,9 @@ function pushTriangle(
   source: [Point, Point, Point],
   target: [Point, Point, Point]
 ): void {
-  if (triangleArea(target) < 1) return; // skip slivers after warping
+  const tArea = triangleArea(target);
+  const sArea = triangleArea(source);
+  if (tArea < 1 || sArea < 1e-4) return; // skip slivers and degenerate source anchors
   out.push({ source, target });
 }
 

@@ -90,4 +90,54 @@ describe('OcclusionEngine', () => {
     // A far corner of the frame is not occluded.
     expect(engine.isPointOccluded(result!, 10, 10)).toBe(false);
   });
+
+  it('maintains occlusion with depth hysteresis near the boundary', () => {
+    const engine = new OcclusionEngine(true);
+    // 1. Enter occlusion with arm in front
+    for (let i = 0; i < 10; i++) {
+      engine.computeOccluders(pose(-0.15), W, H);
+    }
+
+    // 2. Arm moves slightly back near boundary
+    const res = engine.computeOccluders(pose(0.01), W, H);
+    expect(res).not.toBeNull();
+    // Arm capsule should still be retained due to +0.035 hysteresis margin
+    expect(res!.capsules.length).toBeGreaterThan(1);
+  });
+
+  it('projects palm capsule forward from wrist joint to cover hand', () => {
+    const engine = new OcclusionEngine(true);
+    let result = null;
+    for (let i = 0; i < 10; i++) {
+      result = engine.computeOccluders(pose(-0.2), W, H);
+    }
+    expect(result).not.toBeNull();
+
+    // Palm center should be projected forward (further along wrist-elbow axis)
+    // For right arm (elbow 0.63, 0.40 -> wrist 0.64, 0.55), hand projects down-right
+    const wristX = 0.64 * W;
+    const wristY = 0.55 * H;
+    const handCapsule = result!.capsules.find((c) =>
+      Math.hypot(c.a.x - wristX, c.a.y - wristY) < 10 &&
+      (c.b.x !== c.a.x || c.b.y !== c.a.y)
+    );
+    expect(handCapsule).toBeDefined();
+    if (handCapsule) {
+      expect(handCapsule.b.y).toBeGreaterThan(wristY);
+    }
+  });
+
+  it('supports crossed arms with visibility between 0.30 and 0.50', () => {
+    const engine = new OcclusionEngine(true);
+    const crossedPose = pose(-0.2);
+    crossedPose.landmarks[LandmarkIndex.LEFT_WRIST].visibility = 0.35;
+    crossedPose.landmarks[LandmarkIndex.RIGHT_WRIST].visibility = 0.35;
+
+    let result = null;
+    for (let i = 0; i < 8; i++) {
+      result = engine.computeOccluders(crossedPose, W, H);
+    }
+    expect(result).not.toBeNull();
+    expect(result!.capsules.length).toBeGreaterThan(1);
+  });
 });
