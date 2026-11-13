@@ -26,7 +26,7 @@ import type {
   LiveFrameResponse,
   LiveSessionStatus,
 } from '../types';
-import { ClothingCategory as CC } from '../types';
+import { ClothingCategory as CC, LandmarkIndex } from '../types';
 import { ImagePoseService } from './imagePoseService';
 import { getBackendApiUrl } from './productExtractor';
 
@@ -492,83 +492,89 @@ export class VirtualTryOnService {
             const garmentRatio =
               (garmentImg.naturalHeight || 700) / (garmentImg.naturalWidth || 600);
 
-            // Garment silhouette metrics: fraction of total image width occupied by outer shoulder seams,
-            // and vertical depth from the top to the collar notch.
-            let garmentShoulderRatio = 0.65;
-            let collarNotchFraction = 0.13;
+            // Garment silhouette metrics:
+            // 1. garmentShoulderRatio: outer shoulder seam distance relative to full image width
+            // 2. garmentShoulderYFraction: vertical offset from image top to shoulder seam
+            let garmentShoulderRatio = 0.40;
+            let garmentShoulderYFraction = 0.072;
 
             if (category === CC.KURTI || category === CC.DRESS) {
-              garmentShoulderRatio = 0.68;
-              collarNotchFraction = 0.09;
+              garmentShoulderRatio = 0.42;
+              garmentShoulderYFraction = 0.060;
             } else if (category === CC.JACKET) {
-              garmentShoulderRatio = 0.70;
-              collarNotchFraction = 0.15;
+              garmentShoulderRatio = 0.42;
+              garmentShoulderYFraction = 0.078;
             } else if (category === CC.TOP) {
-              garmentShoulderRatio = 0.64;
-              collarNotchFraction = 0.15;
+              garmentShoulderRatio = 0.40;
+              garmentShoulderYFraction = 0.070;
             } else if (category === CC.SHIRT) {
-              garmentShoulderRatio = 0.67;
-              collarNotchFraction = 0.13;
+              garmentShoulderRatio = 0.39;
+              garmentShoulderYFraction = 0.072;
+            } else if (category === CC.T_SHIRT) {
+              garmentShoulderRatio = 0.37;
+              garmentShoulderYFraction = 0.080;
             }
 
             // Calculate base dimensions:
             // Match the garment's outer shoulder seam distance to the user's detected shoulder distance
-            let baseWidth = (analysis.shoulderDistance * canvas.width) / garmentShoulderRatio;
-
-            // In portrait / bust shots (close-up headshots), shoulders extend to the frame edges.
-            // Ensure garment is wide enough to cover existing clothing across the chest and shoulders.
-            if (analysis.isPortraitOrHeadshot) {
-              baseWidth = Math.max(baseWidth, canvas.width * 0.92);
-            }
+            // with 5% ease for a natural, tailored drape across the chest and shoulders.
+            let baseWidth = (analysis.shoulderDistance * canvas.width) / garmentShoulderRatio * 1.05;
 
             // Apply category sizing adjustments
             if (category === CC.KURTI || category === CC.DRESS) {
-              baseWidth *= 1.05;
+              baseWidth *= 1.02;
             } else if (category === CC.JACKET) {
-              baseWidth *= 1.08;
+              baseWidth *= 1.04;
             } else if (category === CC.TOP) {
               baseWidth *= 0.98;
             }
 
             let baseHeight = baseWidth * garmentRatio;
 
-            // Collar / Clavicle anchor: garment collar notch sits at the base of the neck
-            let collarX = analysis.shoulderMidX * canvas.width;
-            let collarY = analysis.collarY * canvas.height;
+            // Anatomical shoulder anchor:
+            // The garment's shoulder seam aligns with the user's detected shoulder line.
+            let baseX = analysis.shoulderMidX * canvas.width - baseWidth / 2;
+            let baseY = analysis.shoulderMidY * canvas.height - garmentShoulderYFraction * baseHeight;
             let baseAngle = analysis.rotationDeg;
 
-            // Adapt framing presets gracefully without discarding real landmarks
-            const preset = fitOptions?.framingPreset ?? 'auto';
-            if (preset === 'portrait') {
-              baseWidth = Math.max(baseWidth, canvas.width * 0.94);
-              baseHeight = baseWidth * garmentRatio;
-              if (analysis.hasPose) {
-                collarY = Math.min(collarY, analysis.shoulderMidY * canvas.height - 10);
-              } else {
-                collarX = canvas.width * 0.5;
-                collarY = canvas.height * 0.56;
-              }
-            } else if (preset === 'full-body') {
-              if (analysis.hasPose) {
-                baseWidth *= 0.98;
-                baseHeight = baseWidth * garmentRatio;
-              } else {
-                baseWidth = canvas.width * 0.42;
-                baseHeight = baseWidth * garmentRatio;
-                collarX = canvas.width * 0.5;
-                collarY = canvas.height * 0.24;
-              }
-            } else if (preset === 'half-body') {
-              if (!analysis.hasPose) {
-                baseWidth = canvas.width * 0.56;
-                baseHeight = baseWidth * garmentRatio;
-                collarX = canvas.width * 0.5;
-                collarY = canvas.height * 0.36;
+            // Face and chin protection guard:
+            // Guarantee that under any photo crop or framing, the garment collar never creeps
+            // onto the chin, jaw, or mouth.
+            if (analysis.landmarks) {
+              const nose = analysis.landmarks[LandmarkIndex.NOSE];
+              const mouthL = analysis.landmarks[LandmarkIndex.MOUTH_LEFT];
+              const mouthR = analysis.landmarks[LandmarkIndex.MOUTH_RIGHT];
+              const mouthY = (mouthL && mouthR ? (mouthL.y + mouthR.y) / 2 : (nose?.y ?? 0.2) + 0.08) * canvas.height;
+              const noseY = (nose?.y ?? (mouthY / canvas.height - 0.08)) * canvas.height;
+              const chinMinY = mouthY + (mouthY - noseY) * 0.55;
+
+              // Ensure the visible top of the collar is strictly below the chin (at least chin + 10px)
+              const visibleTopY = baseY + (garmentShoulderYFraction * 0.45) * baseHeight;
+              if (visibleTopY < chinMinY + 10) {
+                baseY = chinMinY + 10 - (garmentShoulderYFraction * 0.45) * baseHeight;
               }
             }
 
-            let baseX = collarX - baseWidth / 2;
-            let baseY = collarY - baseHeight * collarNotchFraction;
+            // Heuristic framing presets when landmarks are not available (fallback)
+            const preset = fitOptions?.framingPreset ?? 'auto';
+            if (!analysis.hasPose) {
+              if (preset === 'portrait') {
+                baseWidth = canvas.width * 1.45;
+                baseHeight = baseWidth * garmentRatio;
+                baseX = canvas.width * 0.5 - baseWidth / 2;
+                baseY = canvas.height * 0.58 - garmentShoulderYFraction * baseHeight;
+              } else if (preset === 'full-body') {
+                baseWidth = canvas.width * 0.75;
+                baseHeight = baseWidth * garmentRatio;
+                baseX = canvas.width * 0.5 - baseWidth / 2;
+                baseY = canvas.height * 0.28 - garmentShoulderYFraction * baseHeight;
+              } else {
+                baseWidth = canvas.width * 1.05;
+                baseHeight = baseWidth * garmentRatio;
+                baseX = canvas.width * 0.5 - baseWidth / 2;
+                baseY = canvas.height * 0.42 - garmentShoulderYFraction * baseHeight;
+              }
+            }
 
             // 3. Apply user fit adjustments (from the interactive fitting studio)
             const scale = fitOptions?.scale ?? 1.0;

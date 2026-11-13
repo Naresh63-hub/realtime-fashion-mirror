@@ -376,24 +376,72 @@ export class ClothingEngine {
     const lh = lm[LandmarkIndex.LEFT_HIP];
     const rh = lm[LandmarkIndex.RIGHT_HIP];
 
-    // Torso landmarks (both shoulders and both hips) must be present and visible (>= 0.3).
-    // When a user steps out of frame or torso tracking is lost, return an empty warp
-    // so stale clothing never freezes or floats in empty space.
-    const MIN_TORSO_VISIBILITY = 0.3;
-    const torsoVisible =
-      (ls?.visibility ?? 0) >= MIN_TORSO_VISIBILITY &&
-      (rs?.visibility ?? 0) >= MIN_TORSO_VISIBILITY &&
-      (lh?.visibility ?? 0) >= MIN_TORSO_VISIBILITY &&
-      (rh?.visibility ?? 0) >= MIN_TORSO_VISIBILITY;
-    if (!ls || !rs || !lh || !rh || !torsoVisible) {
+    // Shoulder landmarks are strictly required to anchor upper-body garments.
+    // Minimum visibility 0.25 ensures we don't warp onto phantom noise or when user steps away.
+    const MIN_SHOULDER_VISIBILITY = 0.25;
+    const shouldersVisible =
+      ls &&
+      rs &&
+      (ls.visibility ?? 0) >= MIN_SHOULDER_VISIBILITY &&
+      (rs.visibility ?? 0) >= MIN_SHOULDER_VISIBILITY;
+
+    if (!shouldersVisible) {
       return { triangles: [], center: { x: 0, y: 0 } };
     }
 
     const px = (p: Point): Point => ({ x: p.x * frameWidth, y: p.y * frameHeight });
     const LS = px(ls);
     const RS = px(rs);
-    const LH = px(lh);
-    const RH = px(rh);
+
+    const bodyShoulderMid = midpoint(LS, RS);
+    const bodyShoulderSpan = dist(LS, RS);
+
+    // Shoulder vector & orientation
+    const sDx = RS.x - LS.x;
+    const sDy = RS.y - LS.y;
+    const sSpan = Math.max(1, bodyShoulderSpan);
+    const uX = sDx / sSpan;
+    const uY = sDy / sSpan;
+    // Perpendicular unit vector pointing downward (+90 deg clockwise in screen coordinates where +y is down)
+    const downX = -uY;
+    const downY = uX;
+
+    // Check hips visibility (standing/full-body vs seated/bust webcam framing)
+    const MIN_HIP_VISIBILITY = 0.25;
+    const hipsTracked =
+      lh &&
+      rh &&
+      (lh.visibility ?? 0) >= MIN_HIP_VISIBILITY &&
+      (rh.visibility ?? 0) >= MIN_HIP_VISIBILITY;
+
+    let LH: Point;
+    let RH: Point;
+    let bodyHipMid: Point;
+    let bodyTorsoLen: number;
+
+    if (hipsTracked) {
+      LH = px(lh);
+      RH = px(rh);
+      bodyHipMid = midpoint(LH, RH);
+      bodyTorsoLen = Math.max(sSpan * 0.8, dist(bodyShoulderMid, bodyHipMid));
+    } else {
+      // Seated / bust framing (e.g. laptop webcam): hips are off-screen below the desk/frame.
+      // Synthesize anatomical hips based on the biacromial shoulder span and torso axis.
+      bodyTorsoLen = Math.max(frameHeight * 0.48, sSpan * 1.32);
+      bodyHipMid = {
+        x: bodyShoulderMid.x + downX * bodyTorsoLen,
+        y: bodyShoulderMid.y + downY * bodyTorsoLen,
+      };
+      const halfHipSpan = (sSpan * 0.82) / 2;
+      LH = {
+        x: bodyHipMid.x - uX * halfHipSpan,
+        y: bodyHipMid.y - uY * halfHipSpan,
+      };
+      RH = {
+        x: bodyHipMid.x + uX * halfHipSpan,
+        y: bodyHipMid.y + uY * halfHipSpan,
+      };
+    }
 
     // Arm landmarks below the visibility threshold do not drive sleeves.
     const MIN_ARM_VISIBILITY = 0.35;
@@ -408,11 +456,6 @@ export class ClothingEngine {
     const gShoulderMid = midpoint(A.leftShoulder, A.rightShoulder);
     const gShoulderSpan = dist(A.leftShoulder, A.rightShoulder);
     const gTorsoLen = Math.max(1, A.bottom.y - gShoulderMid.y);
-
-    const bodyShoulderMid = midpoint(LS, RS);
-    const bodyHipMid = midpoint(LH, RH);
-    const bodyShoulderSpan = dist(LS, RS);
-    const bodyTorsoLen = Math.max(1, dist(bodyShoulderMid, bodyHipMid));
 
     // Temporal stabilization per garment part using TrackingSmoother
     const rawRotation = Math.atan2(RS.y - LS.y, RS.x - LS.x);
@@ -433,7 +476,10 @@ export class ClothingEngine {
     const clampedShearRatio = Math.max(-0.45, Math.min(0.45, hipShear / bodyTorsoLen));
 
     // 3D perspective foreshortening derived from MediaPipe landmark depth
-    const tDepth = torsoDepth(ls.z ?? 0, rs.z ?? 0, lh.z ?? 0, rh.z ?? 0);
+    const hipZ = ((ls.z ?? 0) + (rs.z ?? 0)) / 2;
+    const lz = hipsTracked ? (lh.z ?? 0) : hipZ;
+    const rz = hipsTracked ? (rh.z ?? 0) : hipZ;
+    const tDepth = torsoDepth(ls.z ?? 0, rs.z ?? 0, lz, rz);
     const apply3D = shouldApplyPerspective(true, tDepth.spread, 0.03);
 
     /**
@@ -449,7 +495,7 @@ export class ClothingEngine {
       // 3D perspective scaling across torso rotation
       let pFactor = 1.0;
       if (apply3D) {
-        const localZ = depthAt(ls.z ?? 0, rs.z ?? 0, lh.z ?? 0, rh.z ?? 0, u, v);
+        const localZ = depthAt(ls.z ?? 0, rs.z ?? 0, lz, rz, u, v);
         pFactor = perspectiveFactor(localZ, tDepth.meanZ, 0.28);
       }
 

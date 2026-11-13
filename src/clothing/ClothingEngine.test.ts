@@ -59,11 +59,19 @@ describe('ClothingEngine.calculateWarp', () => {
   const engine = new ClothingEngine();
   const garment = testGarment();
 
-  it('returns an empty warp when torso landmarks are missing', () => {
+  it('returns an empty warp when shoulder landmarks are missing', () => {
     const pose = uprightPose();
-    pose.landmarks[LandmarkIndex.LEFT_HIP] = landmark(0.5, 0.5, 0, 0.01);
+    pose.landmarks[LandmarkIndex.LEFT_SHOULDER] = landmark(0.4, 0.25, 0, 0.01);
     const warp = engine.calculateWarp(pose, garment, FRAME_W, FRAME_H);
     expect(warp.triangles.length).toBe(0);
+  });
+
+  it('produces a mesh in seated / bust framing when hips are off-screen', () => {
+    const seated = uprightPose();
+    seated.landmarks[LandmarkIndex.LEFT_HIP] = landmark(0.43, 0.55, 0, 0.05);
+    seated.landmarks[LandmarkIndex.RIGHT_HIP] = landmark(0.57, 0.55, 0, 0.05);
+    const warp = engine.calculateWarp(seated, garment, FRAME_W, FRAME_H);
+    expect(warp.triangles.length).toBeGreaterThan(60);
   });
 
   it('produces a mesh covering torso and sleeves', () => {

@@ -1,10 +1,114 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="640" viewBox="0 0 600 640">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#10b981"/>
-      <stop offset="1" stop-color="#0f766e"/>
+    <!-- Organic Forest Cotton Gradient -->
+    <linearGradient id="teeBodyGrad" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="30%" stop-color="#059669"/>
+      <stop offset="70%" stop-color="#047857"/>
+      <stop offset="100%" stop-color="#065f46"/>
     </linearGradient>
+
+    <!-- Chest Volume Radial Highlight -->
+    <radialGradient id="teeHighlight" cx="50%" cy="30%" r="45%">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.32"/>
+      <stop offset="60%" stop-color="#059669" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#064e3b" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Ribbed Collar Gradient -->
+    <linearGradient id="ribCollarGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#047857"/>
+      <stop offset="50%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#065f46"/>
+    </linearGradient>
+
+    <linearGradient id="innerNeckGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#022c22"/>
+      <stop offset="100%" stop-color="#064e3b"/>
+    </linearGradient>
+
+    <filter id="teeShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#022c22" flood-opacity="0.38"/>
+    </filter>
+
+    <filter id="collarRibShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#022c22" flood-opacity="0.45"/>
+    </filter>
   </defs>
-  <path fill="url(#g)" d="M225 40 L190 52 L110 92 L70 132 L120 240 L165 212 L165 600 L435 600 L435 212 L480 240 L530 132 L490 92 L410 52 L375 40 Q300 84 225 40 Z"/>
-  <path fill="rgba(0,0,0,0.14)" d="M225 40 Q300 84 375 40 L360 74 Q300 104 240 74 Z"/>
+
+  <!-- Garment Body Silhouette -->
+  <path fill="url(#teeBodyGrad)" filter="url(#teeShadow)" d="
+    M 226 44
+    C 190 48, 150 62, 110 82
+    L 62 142
+    C 52 154, 54 172, 66 182
+    L 116 238
+    C 126 248, 142 248, 152 238
+    L 174 212
+    C 172 250, 168 340, 168 430
+    C 168 520, 166 580, 170 610
+    C 210 618, 255 622, 300 622
+    C 345 622, 390 618, 430 610
+    C 434 580, 432 520, 432 430
+    C 432 340, 428 250, 426 212
+    L 448 238
+    C 458 248, 474 248, 484 238
+    L 534 182
+    C 546 172, 548 154, 538 142
+    L 490 82
+    C 450 62, 410 48, 374 44
+    C 350 46, 335 78, 300 78
+    C 265 78, 250 46, 226 44 Z
+  "/>
+
+  <!-- 3D Chest Lighting Overlay -->
+  <path fill="url(#teeHighlight)" d="
+    M 174 210
+    C 174 210, 225 180, 300 180
+    C 375 180, 426 210, 426 210
+    C 426 360, 428 510, 426 600
+    C 380 612, 330 616, 300 616
+    C 270 616, 220 612, 174 600
+    C 172 510, 174 360, 174 210 Z
+  "/>
+
+  <!-- Left Sleeve Seam -->
+  <path stroke="rgba(255,255,255,0.18)" stroke-width="1.8" fill="none" d="M 110 82 C 130 120, 150 170, 174 212"/>
+  <path stroke="rgba(2,44,34,0.35)" stroke-width="1.8" fill="none" d="M 109 83 C 129 121, 149 171, 173 213"/>
+  <path stroke="rgba(255,255,255,0.22)" stroke-width="1.4" stroke-dasharray="3,3" fill="none" d="M 74 154 L 128 222"/>
+
+  <!-- Right Sleeve Seam -->
+  <path stroke="rgba(255,255,255,0.18)" stroke-width="1.8" fill="none" d="M 490 82 C 470 120, 450 170, 426 212"/>
+  <path stroke="rgba(2,44,34,0.35)" stroke-width="1.8" fill="none" d="M 491 83 C 471 121, 451 171, 427 213"/>
+  <path stroke="rgba(255,255,255,0.22)" stroke-width="1.4" stroke-dasharray="3,3" fill="none" d="M 526 154 L 472 222"/>
+
+  <!-- Inner Neck Cutout -->
+  <path fill="url(#innerNeckGrad)" d="
+    M 228 44
+    C 250 56, 350 56, 372 44
+    C 355 70, 245 70, 228 44 Z
+  "/>
+
+  <!-- Ribbed Crew Neck Band -->
+  <path fill="url(#ribCollarGrad)" stroke="rgba(255,255,255,0.25)" stroke-width="1.2" filter="url(#collarRibShadow)" d="
+    M 226 44
+    C 250 82, 350 82, 374 44
+    C 360 62, 340 92, 300 92
+    C 260 92, 240 62, 226 44 Z
+  "/>
+
+  <!-- Collar Rib Texture Lines -->
+  <g stroke="rgba(255,255,255,0.22)" stroke-width="1">
+    <line x1="240" y1="52" x2="246" y2="62"/>
+    <line x1="256" y1="62" x2="262" y2="72"/>
+    <line x1="274" y1="72" x2="280" y2="84"/>
+    <line x1="300" y1="78" x2="300" y2="92"/>
+    <line x1="326" y1="72" x2="320" y2="84"/>
+    <line x1="344" y1="62" x2="338" y2="72"/>
+    <line x1="360" y1="52" x2="354" y2="62"/>
+  </g>
+
+  <!-- Hem Double Topstitch -->
+  <path stroke="rgba(255,255,255,0.2)" stroke-width="1.2" stroke-dasharray="4,3" fill="none" d="M 174 598 C 220 608, 380 608, 426 598"/>
+  <path stroke="rgba(255,255,255,0.2)" stroke-width="1.2" stroke-dasharray="4,3" fill="none" d="M 172 604 C 220 614, 380 614, 428 604"/>
 </svg>

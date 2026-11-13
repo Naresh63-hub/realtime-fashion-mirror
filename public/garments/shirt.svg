@@ -1,15 +1,219 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="700" viewBox="0 0 600 700">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#6366f1"/>
-      <stop offset="1" stop-color="#3730a3"/>
+    <!-- Fabric gradient: Rich Oxford Indigo -->
+    <linearGradient id="shirtBodyGrad" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="25%" stop-color="#4338ca"/>
+      <stop offset="60%" stop-color="#3730a3"/>
+      <stop offset="100%" stop-color="#312e81"/>
     </linearGradient>
+
+    <!-- Torso volume highlight (3D chest contour) -->
+    <radialGradient id="chestHighlight" cx="50%" cy="32%" r="42%">
+      <stop offset="0%" stop-color="#818cf8" stop-opacity="0.38"/>
+      <stop offset="55%" stop-color="#4f46e5" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#312e81" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Collar gradient & drop shadow -->
+    <linearGradient id="collarGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e0e7ff"/>
+      <stop offset="35%" stop-color="#c7d2fe"/>
+      <stop offset="85%" stop-color="#a5b4fc"/>
+      <stop offset="100%" stop-color="#818cf8"/>
+    </linearGradient>
+
+    <linearGradient id="innerCollarGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#312e81"/>
+    </linearGradient>
+
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.45"/>
+    </filter>
+
+    <filter id="collarShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#0f172a" flood-opacity="0.55"/>
+    </filter>
+
+    <!-- Button gradient -->
+    <radialGradient id="pearlButton" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="45%" stop-color="#f1f5f9"/>
+      <stop offset="85%" stop-color="#cbd5e1"/>
+      <stop offset="100%" stop-color="#94a3b8"/>
+    </radialGradient>
   </defs>
-  <path fill="url(#g)" d="M228 36 L185 50 L96 96 L52 140 L118 262 L170 230 L162 664 L438 664 L430 230 L482 262 L548 140 L504 96 L415 50 L372 36 L300 92 Z"/>
-  <path fill="rgba(255,255,255,0.85)" d="M238 44 L300 96 L362 44 L352 34 L300 62 L248 34 Z"/>
-  <path fill="rgba(0,0,0,0.18)" d="M300 96 L312 664 L288 664 Z"/>
-  <circle cx="215" cy="320" r="5" fill="rgba(0,0,0,0.35)"/>
-  <circle cx="215" cy="380" r="5" fill="rgba(0,0,0,0.35)"/>
-  <circle cx="215" cy="440" r="5" fill="rgba(0,0,0,0.35)"/>
-  <circle cx="215" cy="500" r="5" fill="rgba(0,0,0,0.35)"/>
+
+  <!-- Group: Garment Body & Sleeves -->
+  <g id="body">
+    <!-- Main Shirt Silhouette with tailored armholes, sleeves, and curved hem -->
+    <path fill="url(#shirtBodyGrad)" filter="url(#softShadow)" d="
+      M 230 46
+      C 200 48, 160 56, 120 74
+      L 58 138
+      C 48 148, 48 165, 58 178
+      L 106 248
+      C 114 258, 128 260, 138 252
+      L 168 226
+      C 165 250, 162 340, 162 440
+      C 162 540, 160 610, 164 656
+      C 200 668, 250 674, 300 674
+      C 350 674, 400 668, 436 656
+      C 440 610, 438 540, 438 440
+      C 438 340, 435 250, 432 226
+      L 462 252
+      C 472 260, 486 258, 494 248
+      L 542 178
+      C 552 165, 552 148, 542 138
+      L 480 74
+      C 440 56, 400 48, 370 46
+      C 350 48, 335 60, 300 78
+      C 265 60, 250 48, 230 46 Z
+    "/>
+
+    <!-- 3D Chest Lighting & Crease Highlights -->
+    <path fill="url(#chestHighlight)" d="
+      M 166 220
+      C 166 220, 220 180, 300 180
+      C 380 180, 434 220, 434 220
+      C 434 380, 436 560, 434 650
+      C 380 664, 320 668, 300 668
+      C 280 668, 220 664, 166 650
+      C 164 560, 166 380, 166 220 Z
+    "/>
+
+    <!-- Sleeve Cuffs & Seam Details -->
+    <!-- Left Sleeve Seam -->
+    <path stroke="rgba(255,255,255,0.18)" stroke-width="2" fill="none" d="M 120 74 C 135 120, 148 175, 168 226"/>
+    <path stroke="rgba(15,23,42,0.4)" stroke-width="2" fill="none" d="M 119 75 C 134 121, 147 176, 167 227"/>
+    <!-- Left Sleeve Cuff Stitch -->
+    <path stroke="rgba(255,255,255,0.22)" stroke-width="1.8" stroke-dasharray="3,3" fill="none" d="M 68 152 L 118 226"/>
+
+    <!-- Right Sleeve Seam -->
+    <path stroke="rgba(255,255,255,0.18)" stroke-width="2" fill="none" d="M 480 74 C 465 120, 452 175, 432 226"/>
+    <path stroke="rgba(15,23,42,0.4)" stroke-width="2" fill="none" d="M 481 75 C 466 121, 453 176, 433 227"/>
+    <!-- Right Sleeve Cuff Stitch -->
+    <path stroke="rgba(255,255,255,0.22)" stroke-width="1.8" stroke-dasharray="3,3" fill="none" d="M 532 152 L 482 226"/>
+
+    <!-- Yoke & Shoulder Seams -->
+    <path stroke="rgba(255,255,255,0.2)" stroke-width="2" fill="none" d="M 230 46 C 265 52, 335 52, 370 46"/>
+    <path stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-dasharray="4,3" fill="none" d="M 185 58 L 230 46"/>
+    <path stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-dasharray="4,3" fill="none" d="M 415 58 L 370 46"/>
+
+    <!-- Chest Pocket (Left Chest, x: 200..250, y: 220..280) -->
+    <g id="pocket" opacity="0.85">
+      <path fill="rgba(67,56,202,0.65)" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" d="
+        M 206 226 L 254 226 L 254 274 L 230 288 L 206 274 Z
+      "/>
+      <path stroke="rgba(255,255,255,0.28)" stroke-width="1.2" stroke-dasharray="3,3" fill="none" d="
+        M 209 229 L 251 229 L 251 272 L 230 284 L 209 272 Z
+      "/>
+    </g>
+
+    <!-- Center Button Placket -->
+    <!-- Placket Background -->
+    <rect x="286" y="90" width="28" height="580" fill="rgba(55,48,163,0.9)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+    <!-- Placket Shadow (right edge) -->
+    <line x1="314" y1="90" x2="314" y2="670" stroke="rgba(15,23,42,0.45)" stroke-width="2"/>
+    <!-- Placket Stitching Lines -->
+    <line x1="289" y1="90" x2="289" y2="670" stroke="rgba(255,255,255,0.25)" stroke-width="1.2" stroke-dasharray="4,3"/>
+    <line x1="311" y1="90" x2="311" y2="670" stroke="rgba(255,255,255,0.25)" stroke-width="1.2" stroke-dasharray="4,3"/>
+
+    <!-- Buttons along center (x=300) -->
+    <!-- Button 1 -->
+    <circle cx="300" cy="140" r="6" fill="url(#pearlButton)" stroke="rgba(15,23,42,0.3)" stroke-width="1" filter="url(#softShadow)"/>
+    <circle cx="298" cy="139" r="1.2" fill="#475569"/>
+    <circle cx="302" cy="139" r="1.2" fill="#475569"/>
+    <circle cx="298" cy="141" r="1.2" fill="#475569"/>
+    <circle cx="302" cy="141" r="1.2" fill="#475569"/>
+    <line x1="298" y1="139" x2="302" y2="141" stroke="#334155" stroke-width="0.8"/>
+    <line x1="298" y1="141" x2="302" y2="139" stroke="#334155" stroke-width="0.8"/>
+
+    <!-- Button 2 -->
+    <circle cx="300" cy="220" r="6" fill="url(#pearlButton)" stroke="rgba(15,23,42,0.3)" stroke-width="1" filter="url(#softShadow)"/>
+    <circle cx="298" cy="219" r="1.2" fill="#475569"/>
+    <circle cx="302" cy="219" r="1.2" fill="#475569"/>
+    <circle cx="298" cy="221" r="1.2" fill="#475569"/>
+    <circle cx="302" cy="221" r="1.2" fill="#475569"/>
+    <line x1="298" y1="219" x2="302" y2="221" stroke="#334155" stroke-width="0.8"/>
+    <line x1="298" y1="221" x2="302" y2="219" stroke="#334155" stroke-width="0.8"/>
+
+    <!-- Button 3 -->
+    <circle cx="300" cy="300" r="6" fill="url(#pearlButton)" stroke="rgba(15,23,42,0.3)" stroke-width="1" filter="url(#softShadow)"/>
+    <circle cx="298" cy="299" r="1.2" fill="#475569"/>
+    <circle cx="302" cy="299" r="1.2" fill="#475569"/>
+    <circle cx="298" cy="301" r="1.2" fill="#475569"/>
+    <circle cx="302" cy="301" r="1.2" fill="#475569"/>
+    <line x1="298" y1="299" x2="302" y2="301" stroke="#334155" stroke-width="0.8"/>
+    <line x1="298" y1="301" x2="302" y2="299" stroke="#334155" stroke-width="0.8"/>
+
+    <!-- Button 4 -->
+    <circle cx="300" cy="380" r="6" fill="url(#pearlButton)" stroke="rgba(15,23,42,0.3)" stroke-width="1" filter="url(#softShadow)"/>
+    <circle cx="298" cy="379" r="1.2" fill="#475569"/>
+    <circle cx="302" cy="379" r="1.2" fill="#475569"/>
+    <circle cx="298" cy="381" r="1.2" fill="#475569"/>
+    <circle cx="302" cy="381" r="1.2" fill="#475569"/>
+    <line x1="298" y1="379" x2="302" y2="381" stroke="#334155" stroke-width="0.8"/>
+    <line x1="298" y1="381" x2="302" y2="379" stroke="#334155" stroke-width="0.8"/>
+
+    <!-- Button 5 -->
+    <circle cx="300" cy="460" r="6" fill="url(#pearlButton)" stroke="rgba(15,23,42,0.3)" stroke-width="1" filter="url(#softShadow)"/>
+    <circle cx="298" cy="459" r="1.2" fill="#475569"/>
+    <circle cx="302" cy="459" r="1.2" fill="#475569"/>
+    <circle cx="298" cy="461" r="1.2" fill="#475569"/>
+    <circle cx="302" cy="461" r="1.2" fill="#475569"/>
+    <line x1="298" y1="459" x2="302" y2="461" stroke="#334155" stroke-width="0.8"/>
+    <line x1="298" y1="461" x2="302" y2="459" stroke="#334155" stroke-width="0.8"/>
+
+    <!-- Button 6 -->
+    <circle cx="300" cy="540" r="6" fill="url(#pearlButton)" stroke="rgba(15,23,42,0.3)" stroke-width="1" filter="url(#softShadow)"/>
+    <circle cx="298" cy="539" r="1.2" fill="#475569"/>
+    <circle cx="302" cy="539" r="1.2" fill="#475569"/>
+    <circle cx="298" cy="541" r="1.2" fill="#475569"/>
+    <circle cx="302" cy="541" r="1.2" fill="#475569"/>
+    <line x1="298" y1="539" x2="302" y2="541" stroke="#334155" stroke-width="0.8"/>
+    <line x1="298" y1="541" x2="302" y2="539" stroke="#334155" stroke-width="0.8"/>
+  </g>
+
+  <!-- Group: Collar Assembly with Stand & Leaves (Crisp, High-End Tailoring) -->
+  <g id="collar" filter="url(#collarShadow)">
+    <!-- Inner Neck Cutout / Collar Stand -->
+    <path fill="url(#innerCollarGrad)" d="
+      M 240 44
+      C 260 56, 340 56, 360 44
+      C 345 74, 255 74, 240 44 Z
+    "/>
+
+    <!-- Left Collar Leaf -->
+    <path fill="url(#collarGrad)" stroke="rgba(255,255,255,0.6)" stroke-width="1.2" d="
+      M 240 44
+      C 265 52, 290 62, 300 88
+      C 285 104, 260 116, 246 122
+      C 240 106, 234 68, 240 44 Z
+    "/>
+    <!-- Left Collar Topstitch -->
+    <path stroke="rgba(99,102,241,0.5)" stroke-width="1" stroke-dasharray="3,2" fill="none" d="
+      M 243 48
+      C 265 55, 286 64, 296 86
+      C 283 100, 261 111, 248 116
+    "/>
+
+    <!-- Right Collar Leaf -->
+    <path fill="url(#collarGrad)" stroke="rgba(255,255,255,0.6)" stroke-width="1.2" d="
+      M 360 44
+      C 335 52, 310 62, 300 88
+      C 315 104, 340 116, 354 122
+      C 360 106, 366 68, 360 44 Z
+    "/>
+    <!-- Right Collar Topstitch -->
+    <path stroke="rgba(99,102,241,0.5)" stroke-width="1" stroke-dasharray="3,2" fill="none" d="
+      M 357 48
+      C 335 55, 314 64, 304 86
+      C 317 100, 339 111, 352 116
+    "/>
+
+    <!-- Collar Stand Tie Button -->
+    <circle cx="300" cy="74" r="4" fill="url(#pearlButton)" stroke="rgba(15,23,42,0.4)" stroke-width="0.8"/>
+  </g>
 </svg>

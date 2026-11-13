@@ -214,9 +214,18 @@ export class PoseDetector {
 
 /** Mean visibility of torso-critical landmarks (0..1). */
 export function torsoConfidence(landmarks: BodyLandmark[]): number {
-  let sum = 0;
-  for (const idx of TORSO_LANDMARKS) {
-    sum += landmarks[idx]?.visibility ?? 0;
+  const lsVis = landmarks[LandmarkIndex.LEFT_SHOULDER]?.visibility ?? 0;
+  const rsVis = landmarks[LandmarkIndex.RIGHT_SHOULDER]?.visibility ?? 0;
+  const lhVis = landmarks[LandmarkIndex.LEFT_HIP]?.visibility ?? 0;
+  const rhVis = landmarks[LandmarkIndex.RIGHT_HIP]?.visibility ?? 0;
+
+  const shoulderAvg = (lsVis + rsVis) / 2;
+  const hipAvg = (lhVis + rhVis) / 2;
+
+  // In seated / bust framing (e.g. laptop webcam), hips are out of frame (visibility < 0.25),
+  // but shoulders are strongly tracked. Weight shoulders to maintain stable tracking without dropouts.
+  if (hipAvg < 0.25) {
+    return shoulderAvg * 0.9 + hipAvg * 0.1;
   }
-  return sum / TORSO_LANDMARKS.length;
+  return shoulderAvg * 0.6 + hipAvg * 0.4;
 }

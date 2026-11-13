@@ -1,12 +1,132 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="620" height="720" viewBox="0 0 620 720">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#64748b"/>
-      <stop offset="1" stop-color="#1e293b"/>
+    <!-- Rich Slate Charcoal Leather/Wool Gradient -->
+    <linearGradient id="jacketBodyGrad" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#475569"/>
+      <stop offset="25%" stop-color="#334155"/>
+      <stop offset="65%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
     </linearGradient>
+
+    <radialGradient id="jacketHighlight" cx="50%" cy="32%" r="45%">
+      <stop offset="0%" stop-color="#64748b" stop-opacity="0.35"/>
+      <stop offset="60%" stop-color="#334155" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Metallic Silver Zipper -->
+    <linearGradient id="metalGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#94a3b8"/>
+      <stop offset="45%" stop-color="#f8fafc"/>
+      <stop offset="70%" stop-color="#cbd5e1"/>
+      <stop offset="100%" stop-color="#64748b"/>
+    </linearGradient>
+
+    <linearGradient id="lapelGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#334155"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+
+    <filter id="jacketShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#020617" flood-opacity="0.5"/>
+    </filter>
+
+    <filter id="lapelShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#020617" flood-opacity="0.6"/>
+    </filter>
   </defs>
-  <path fill="url(#g)" d="M232 40 L180 56 L86 104 L40 150 L112 286 L168 250 L160 684 L292 684 L310 130 L328 684 L460 684 L452 250 L508 286 L580 150 L534 104 L440 56 L388 40 L310 110 Z"/>
-  <path fill="rgba(255,255,255,0.12)" d="M232 40 L310 110 L292 40 L262 30 Z"/>
-  <path fill="rgba(255,255,255,0.12)" d="M388 40 L310 110 L328 40 L358 30 Z"/>
-  <path fill="rgba(0,0,0,0.25)" d="M292 684 L292 130 L310 130 L310 684 Z"/>
+
+  <!-- Garment Body Silhouette -->
+  <path fill="url(#jacketBodyGrad)" filter="url(#jacketShadow)" d="
+    M 230 42
+    C 190 46, 140 60, 96 86
+    L 42 152
+    C 32 164, 34 182, 46 194
+    L 112 284
+    C 122 296, 138 296, 148 286
+    L 170 252
+    C 166 290, 162 400, 162 510
+    C 162 600, 160 650, 162 682
+    C 210 690, 260 694, 310 694
+    C 360 694, 410 690, 458 682
+    C 460 650, 458 600, 458 510
+    C 458 400, 454 290, 450 252
+    L 472 286
+    C 482 296, 498 296, 508 284
+    L 574 194
+    C 586 182, 588 164, 578 152
+    L 524 86
+    C 480 60, 430 46, 390 42
+    C 360 44, 345 74, 310 74
+    C 275 74, 260 44, 230 42 Z
+  "/>
+
+  <!-- 3D Chest Volume Highlight -->
+  <path fill="url(#jacketHighlight)" d="
+    M 170 250
+    C 170 250, 225 190, 310 190
+    C 395 190, 450 250, 450 250
+    C 450 420, 452 580, 450 670
+    C 400 682, 340 686, 310 686
+    C 280 686, 220 682, 170 670
+    C 168 580, 170 420, 170 250 Z
+  "/>
+
+  <!-- Sleeve Seams & Armhole Details -->
+  <path stroke="rgba(255,255,255,0.18)" stroke-width="2" fill="none" d="M 96 86 C 122 135, 145 195, 170 252"/>
+  <path stroke="rgba(0,0,0,0.5)" stroke-width="2" fill="none" d="M 95 87 C 121 136, 144 196, 169 253"/>
+  <path stroke="rgba(255,255,255,0.18)" stroke-width="2" fill="none" d="M 524 86 C 498 135, 475 195, 450 252"/>
+  <path stroke="rgba(0,0,0,0.5)" stroke-width="2" fill="none" d="M 525 87 C 499 136, 476 196, 451 253"/>
+
+  <!-- Welt Chest Zipper Pocket (Right Chest) -->
+  <g id="zipperPocket">
+    <rect x="360" y="210" width="70" height="8" rx="2" fill="#0f172a" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+    <line x1="364" y1="214" x2="424" y2="214" stroke="url(#metalGrad)" stroke-width="2.5" stroke-dasharray="2,1"/>
+    <circle cx="366" cy="214" r="3" fill="url(#metalGrad)"/>
+  </g>
+
+  <!-- Left Slanted Welt Pocket -->
+  <g id="lowerPocketLeft">
+    <path d="M 190 460 L 250 480" stroke="#0f172a" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 190 460 L 250 480" stroke="url(#metalGrad)" stroke-width="2" stroke-dasharray="2,1" stroke-linecap="round"/>
+  </g>
+  <!-- Right Slanted Welt Pocket -->
+  <g id="lowerPocketRight">
+    <path d="M 430 460 L 370 480" stroke="#0f172a" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 430 460 L 370 480" stroke="url(#metalGrad)" stroke-width="2" stroke-dasharray="2,1" stroke-linecap="round"/>
+  </g>
+
+  <!-- Center Metallic Zipper (Full Length) -->
+  <line x1="310" y1="120" x2="310" y2="688" stroke="#090d16" stroke-width="8"/>
+  <line x1="310" y1="120" x2="310" y2="688" stroke="url(#metalGrad)" stroke-width="3" stroke-dasharray="3,1.5"/>
+  <!-- Metallic Zipper Pull Slider -->
+  <rect x="306" y="240" width="8" height="18" rx="2" fill="url(#metalGrad)" filter="url(#lapelShadow)"/>
+  <circle cx="310" cy="254" r="2.5" fill="#1e293b"/>
+
+  <!-- Structured Lapels & Notched Collar with Drop Shadow -->
+  <g id="lapels" filter="url(#lapelShadow)">
+    <!-- Left Lapel -->
+    <path fill="url(#lapelGrad)" stroke="rgba(255,255,255,0.35)" stroke-width="1.2" d="
+      M 236 44
+      L 310 110
+      L 282 178
+      L 242 142
+      L 260 110
+      C 250 85, 240 65, 236 44 Z
+    "/>
+    <!-- Left Lapel Snap Stud -->
+    <circle cx="254" cy="126" r="3.5" fill="url(#metalGrad)"/>
+
+    <!-- Right Lapel -->
+    <path fill="url(#lapelGrad)" stroke="rgba(255,255,255,0.35)" stroke-width="1.2" d="
+      M 384 44
+      L 310 110
+      L 338 178
+      L 378 142
+      L 360 110
+      C 370 85, 380 65, 384 44 Z
+    "/>
+    <!-- Right Lapel Snap Stud -->
+    <circle cx="366" cy="126" r="3.5" fill="url(#metalGrad)"/>
+  </g>
 </svg>

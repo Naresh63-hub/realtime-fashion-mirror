@@ -118,12 +118,10 @@ export class ImagePoseService {
       const mouthY = mouthL && mouthR ? (mouthL.y + mouthR.y) / 2 : (nose?.y ?? 0.2) + 0.08;
       const faceH = Math.max(0.05, mouthY - (nose?.y ?? (mouthY - 0.08)));
       const chinY = mouthY + faceH * 0.55;
-      const neckCollarY = chinY + Math.max(0.015, faceH * 0.35);
 
-      // Collar notch sits at the suprasternal notch at base of neck, between chin and shoulders
-      let collarY = isPortrait
-        ? Math.min(shoulderMidY - 0.015, Math.max(chinY + 0.015, neckCollarY))
-        : Math.min(shoulderMidY, Math.max(chinY + 0.02, neckCollarY));
+      // Collar notch (suprasternal notch) sits at the base of the throat at the clavicle center,
+      // strictly below the chin and naturally aligned with the upper chest / shoulder level.
+      const collarY = Math.max(chinY + 0.035, shoulderMidY - 0.012);
 
       // Torso height estimation
       let torsoHeight = 0.45;
