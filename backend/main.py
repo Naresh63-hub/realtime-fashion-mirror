@@ -33,6 +33,7 @@ from backend.services.live_vton import (
     create_live_session,
     submit_live_frame,
     get_live_session_status,
+    cancel_live_session_inference,
     close_live_session,
 )
 
@@ -206,6 +207,13 @@ def process_live_frame(session_id: str, payload: LiveFrameSubmitRequest):
     Applies concurrency protection: in-flight frames drop subsequent frames to prevent queue backlog.
     """
     return submit_live_frame(session_id, payload)
+
+
+@app.post("/api/live/sessions/{session_id}/cancel")
+def cancel_session_frame(session_id: str):
+    """Cancels active in-flight frame generation for a live session."""
+    cancelled = cancel_live_session_inference(session_id)
+    return {"message": "In-flight inference cancelled", "session_id": session_id, "cancelled": cancelled}
 
 
 @app.delete("/api/live/sessions/{session_id}")

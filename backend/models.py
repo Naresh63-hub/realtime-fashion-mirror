@@ -105,4 +105,7 @@ class LiveSessionStatusResponse(BaseModel):
     frames_received: int = 0
     frames_dropped: int = 0
     ai_configured: bool = False
+    last_error: Optional[str] = None
+    current_garment_name: Optional[str] = None
+    latest_result_garment: Optional[str] = None
 

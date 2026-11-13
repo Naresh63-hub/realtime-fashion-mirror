@@ -3,6 +3,7 @@ Product URL metadata extraction service.
 Extracts title, price, images, brand, and category from product links safely.
 """
 
+import html as html_parser
 import json
 import re
 from typing import Dict, List, Optional
@@ -94,6 +95,20 @@ DEMO_CATALOG_FIXTURES: Dict[str, Dict] = {
         "description": "Double-face fabric with smooth AIRism on the inside and high-quality cotton on the outside.",
     },
 }
+
+
+def is_valid_garment_image_url(img_url: str) -> bool:
+    """Filters out icons, site logos, sprites, and transparent spacing gifs."""
+    if not img_url or not isinstance(img_url, str):
+        return False
+    lower = img_url.lower()
+    # Exclude icons, logos, sprites, transparent spacers, Amazon 'G' directory (general UI assets)
+    if any(k in lower for k in [
+        "/images/g/", "share-icons", "previewdoh", "amazon.png", "logo", 
+        "sprite", "favicon", "badge", "pixel.gif", "transparent", "icon", "play-button"
+    ]):
+        return False
+    return any(ext in lower for ext in (".jpg", ".jpeg", ".png", ".webp"))
 
 
 def find_catalog_fixture(hostname: str) -> Optional[Dict]:
@@ -231,66 +246,102 @@ async def extract_product_from_url(url: str) -> UrlExtractResponse:
                 description=fixture.get("description"),
             )
 
-    # 3. Parse Metadata (OpenGraph, Twitter, JSON-LD)
-    title = (
-        extract_meta_tag(html_content, "og:title")
-        or extract_meta_tag(html_content, "twitter:title")
-    )
-    if not title:
+    # 3. Parse Metadata (OpenGraph, Twitter, JSON-LD, and store-specific HTML elements)
+    title = ""
+
+    # Check store-specific semantic product title elements first
+    product_title_match = re.search(r'id=["\']productTitle["\'][^>]*>(.*?)</span>', html_content, re.IGNORECASE | re.DOTALL)
+    if not product_title_match:
+        product_title_match = re.search(r'<h1[^>]*class=["\'][^"\']*(?:pdp-title|pdp-name|prod-title)[^"\']*["\'][^>]*>(.*?)</h1>', html_content, re.IGNORECASE | re.DOTALL)
+    if product_title_match:
+        title = html_parser.unescape(product_title_match.group(1)).strip()
+
+    # Next check JSON-LD
+    json_ld = extract_json_ld(html_content)
+    if (not title or len(title) < 5) and json_ld:
+        j_name = json_ld.get("name")
+        if j_name and isinstance(j_name, str):
+            title = html_parser.unescape(j_name).strip()
+
+    # Next check OpenGraph / Twitter title (if not generic domain placeholder)
+    if not title or len(title) < 5:
+        og_t = extract_meta_tag(html_content, "og:title") or extract_meta_tag(html_content, "twitter:title")
+        if og_t and not any(og_t.strip().lower() == g for g in ("amazon", "amazon.in", "online shopping", "myntra", "ajio", "zara")):
+            title = html_parser.unescape(og_t).strip()
+
+    # Next check <title> tag with cleanup
+    if not title or len(title) < 5:
         title_match = re.search(r"<title[^>]*>(.*?)</title>", html_content, re.IGNORECASE | re.DOTALL)
         if title_match:
-            title = title_match.group(1).strip()
+            raw_title = html_parser.unescape(title_match.group(1)).strip()
+            # Clean common store suffixes (e.g. ": Amazon.in: Clothing & Accessories", "| Myntra")
+            clean_title = re.sub(r"\s*[:|]\s*(?:Amazon(?:\.in)?|Myntra|AJIO|Zara|Uniqlo|Shopify).*$", "", raw_title, flags=re.IGNORECASE)
+            title = clean_title.strip() or raw_title
         else:
             # Fallback to URL path slug
-            path_parts = [p for p in parsed.path.split("/") if p and not p.isdigit()]
-            slug = path_parts[-1] if path_parts else "Product Item"
+            path_parts = [
+                p for p in parsed.path.split("/")
+                if p and not p.isdigit() and not p.lower().startswith("ref=") and p.lower() not in ("dp", "gp", "product", "buy", "p")
+            ]
+            slug = path_parts[0] if path_parts else "Fashion Product"
             title = slug.replace("-", " ").replace("_", " ").title()
 
-    # Images
-    images: List[str] = []
-    og_image = extract_meta_tag(html_content, "og:image") or extract_meta_tag(html_content, "twitter:image")
-    if og_image:
-        images.append(urljoin(safe_url, og_image))
+    # Clean redundant whitespace from title
+    title = re.sub(r"\s+", " ", title).strip()
 
-    # JSON-LD Product Schema
-    json_ld = extract_json_ld(html_content)
+    # Brand Discovery
+    brand: Optional[str] = None
+    byline_match = re.search(r'<a\s+[^>]*id=["\']bylineInfo["\'][^>]*>(.*?)</a>', html_content, re.IGNORECASE | re.DOTALL)
+    if byline_match:
+        raw_byline = html_parser.unescape(byline_match.group(1)).strip()
+        clean_byline = re.sub(r"<[^>]+>", "", raw_byline)
+        clean_byline = re.sub(r"<!--.*?-->", "", clean_byline).strip()
+        brand = re.sub(r"^(?:Brand:\s*|Visit the\s*|\s*Store|\s*Shop)", "", clean_byline, flags=re.IGNORECASE).strip()
+        brand = re.sub(r"\s+(?:Store|Shop)$", "", brand, flags=re.IGNORECASE).strip()
+    if not brand:
+        brand_match = re.search(r'<a\s+[^>]*id=["\']brand["\'][^>]*>(.*?)</a>', html_content, re.IGNORECASE | re.DOTALL)
+        if brand_match:
+            raw_b = html_parser.unescape(brand_match.group(1)).strip()
+            brand = re.sub(r"<[^>]+>", "", raw_b).strip()
+    if not brand and json_ld and "brand" in json_ld:
+        b_data = json_ld["brand"]
+        brand = b_data.get("name") if isinstance(b_data, dict) else str(b_data)
+
+    # Price Discovery
     price: Optional[float] = None
     currency = "INR"
-    brand: Optional[str] = None
     description = extract_meta_tag(html_content, "og:description")
 
-    if json_ld:
-        if not title or len(title) < 5:
-            title = json_ld.get("name", title)
-        if "image" in json_ld:
-            j_images = json_ld["image"]
-            if isinstance(j_images, str):
-                images.append(urljoin(safe_url, j_images))
-            elif isinstance(j_images, list):
-                for img in j_images:
-                    if isinstance(img, str):
-                        images.append(urljoin(safe_url, img))
-                    elif isinstance(img, dict):
-                        img_url = img.get("url") or img.get("contentUrl")
-                        if img_url and isinstance(img_url, str):
-                            images.append(urljoin(safe_url, img_url))
-            elif isinstance(j_images, dict):
-                img_url = j_images.get("url") or j_images.get("contentUrl")
-                if img_url and isinstance(img_url, str):
-                    images.append(urljoin(safe_url, img_url))
-        if "offers" in json_ld:
-            offers = json_ld["offers"]
-            if isinstance(offers, dict):
+    if json_ld and "offers" in json_ld:
+        offers = json_ld["offers"]
+        if isinstance(offers, dict):
+            try:
+                price = float(offers.get("price", 0))
+                currency = offers.get("priceCurrency", "INR")
+            except (ValueError, TypeError):
+                pass
+        elif isinstance(offers, list) and offers:
+            first_off = offers[0]
+            if isinstance(first_off, dict):
                 try:
-                    price = float(offers.get("price", 0))
-                    currency = offers.get("priceCurrency", "INR")
+                    price = float(first_off.get("price", 0))
+                    currency = first_off.get("priceCurrency", "INR")
                 except (ValueError, TypeError):
                     pass
-        if "brand" in json_ld:
-            b_data = json_ld["brand"]
-            brand = b_data.get("name") if isinstance(b_data, dict) else str(b_data)
 
-    # Price heuristics from og tags if not in json-ld
+    # HTML price heuristics if not in json-ld
+    if price is None:
+        price_match = re.search(r'class=["\']a-price-whole["\'][^>]*>([\d,]+)<', html_content)
+        if not price_match:
+            price_match = re.search(r'class=["\']a-offscreen["\'][^>]*>[^\d]*([\d,.]+)<', html_content)
+        if not price_match:
+            price_match = re.search(r'class=["\'][^"\']*(?:pdp-price|prod-sp)[^"\']*["\'][^>]*>[^\d]*([\d,.]+)', html_content)
+        if price_match:
+            try:
+                price = float(price_match.group(1).replace(",", "").strip())
+            except ValueError:
+                pass
+
     if price is None:
         raw_price = extract_meta_tag(html_content, "product:price:amount") or extract_meta_tag(html_content, "og:price:amount")
         if raw_price:
@@ -303,18 +354,57 @@ async def extract_product_from_url(url: str) -> UrlExtractResponse:
     if raw_curr:
         currency = raw_curr
 
-    # Additional image discovery (Amazon data-old-hires, image_src link tag)
-    if not images and html_content:
-        hires_match = re.search(r'data-old-hires=["\'](https?://[^"\']+)["\']', html_content, re.IGNORECASE)
-        if hires_match:
-            images.append(hires_match.group(1))
-        link_img = re.search(r'<link[^>]*rel=["\']image_src["\'][^>]*href=["\']([^"\']+)["\']', html_content, re.IGNORECASE)
-        if link_img:
-            images.append(urljoin(safe_url, link_img.group(1)))
+    # Images Discovery (Priority to hi-res garment shots)
+    images: List[str] = []
 
-    # Fallback default image if none discovered
-    if not images:
-        images = ["/garments/shirt.svg"]
+    # 1. Amazon dynamic images JSON (highest quality catalog photography)
+    dyn_matches = re.findall(r'data-a-dynamic-image=["\']({.*?})["\']', html_content)
+    for dm in dyn_matches:
+        try:
+            dyn_data = json.loads(dm.replace("&quot;", '"'))
+            for img_k in dyn_data.keys():
+                if is_valid_garment_image_url(img_k):
+                    images.append(img_k)
+        except Exception:
+            pass
+
+    # 2. Amazon data-old-hires, landingImage, and zoom tags
+    hires_matches = re.findall(r'(?:data-old-hires|data-zoom-image|id=["\']landingImage["\'][^>]*src)=["\'](https?://[^"\']+)["\']', html_content, re.IGNORECASE)
+    for hm in hires_matches:
+        if is_valid_garment_image_url(hm):
+            images.append(hm)
+
+    # 3. JSON-LD images
+    if json_ld and "image" in json_ld:
+        j_images = json_ld["image"]
+        if isinstance(j_images, str) and is_valid_garment_image_url(j_images):
+            images.append(urljoin(safe_url, j_images))
+        elif isinstance(j_images, list):
+            for img in j_images:
+                if isinstance(img, str) and is_valid_garment_image_url(img):
+                    images.append(urljoin(safe_url, img))
+                elif isinstance(img, dict):
+                    img_url = img.get("url") or img.get("contentUrl")
+                    if img_url and isinstance(img_url, str) and is_valid_garment_image_url(img_url):
+                        images.append(urljoin(safe_url, img_url))
+
+    # 4. OpenGraph / Twitter Image (only if passing real garment validation)
+    og_image = extract_meta_tag(html_content, "og:image") or extract_meta_tag(html_content, "twitter:image")
+    if og_image and is_valid_garment_image_url(og_image):
+        images.append(urljoin(safe_url, og_image))
+
+    # 5. Extract media-amazon / CDN image URLs if list is still small
+    if len(images) < 2 and "amazon" in hostname:
+        amz_imgs = re.findall(r'https://m\.media-amazon\.com/images/I/[a-zA-Z0-9_\-\.]+\.(?:jpg|png|webp)', html_content)
+        for ai in amz_imgs:
+            if is_valid_garment_image_url(ai):
+                images.append(ai)
+
+    # Deduplicate preserving order
+    clean_images = list(dict.fromkeys(images))
+
+    if not clean_images:
+        clean_images = ["/garments/shirt.svg"]
 
     category = infer_category(title + " " + (description or ""))
     retailer = hostname.replace("www.", "").split(".")[0].capitalize()
@@ -324,8 +414,8 @@ async def extract_product_from_url(url: str) -> UrlExtractResponse:
         brand=brand or retailer,
         price=price,
         currency=currency,
-        images=list(dict.fromkeys(images)),  # deduplicate preserving order
-        selected_image_url=images[0],
+        images=clean_images,
+        selected_image_url=clean_images[0],
         original_url=safe_url,
         category=category,
         retailer=retailer,

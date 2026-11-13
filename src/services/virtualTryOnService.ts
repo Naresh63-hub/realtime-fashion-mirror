@@ -119,7 +119,7 @@ export class VirtualTryOnService {
       return garmentUrl;
     }
     return new Promise((resolve) => {
-      const timer = setTimeout(() => resolve(garmentUrl), 50);
+      const timer = setTimeout(() => resolve(garmentUrl), 2000);
       try {
         const img = new Image();
         img.crossOrigin = 'anonymous';
@@ -374,6 +374,9 @@ export class VirtualTryOnService {
           framesReceived: data.frames_received || 0,
           framesDropped: data.frames_dropped || 0,
           aiConfigured: Boolean(data.ai_configured),
+          lastError: data.last_error,
+          currentGarmentName: data.current_garment_name,
+          latestResultGarment: data.latest_result_garment,
         };
       }
     } catch {
@@ -402,13 +405,14 @@ export class VirtualTryOnService {
     category: ClothingCategory | string = CC.T_SHIRT
   ): Promise<LiveFrameResponse> {
     try {
+      const resolvedGarment = await this.resolveGarmentPayload(garmentImage);
       const backendUrl = getBackendApiUrl();
       const resp = await fetch(`${backendUrl}/api/live/sessions/${sessionId}/frame`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           frame_image: frameImage,
-          garment_image: garmentImage,
+          garment_image: resolvedGarment,
           garment_name: garmentName,
           category,
         }),
@@ -434,6 +438,21 @@ export class VirtualTryOnService {
       message: 'Cloud AI is unconfigured or unreachable. Canvas 2D tracker active.',
       canFallbackToCanvas: true,
     };
+  }
+
+  /**
+   * Cancels active in-flight frame generation for a live session.
+   */
+  static async cancelLiveSessionInference(sessionId: string): Promise<boolean> {
+    try {
+      const backendUrl = getBackendApiUrl();
+      const resp = await fetch(`${backendUrl}/api/live/sessions/${sessionId}/cancel`, {
+        method: 'POST',
+      });
+      return resp.ok;
+    } catch {
+      return false;
+    }
   }
 
   /**

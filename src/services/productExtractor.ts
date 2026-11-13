@@ -125,7 +125,7 @@ export function validateProductUrl(url: string): { valid: boolean; error?: strin
 
 export function inferCategoryFromText(text: string): ClothingCategory {
   const lower = text.toLowerCase();
-  if (lower.includes('kurti') || lower.includes('kurta') || lower.includes('tunic')) {
+  if (lower.includes('kurti') || lower.includes('kurta') || lower.includes('mandarin') || lower.includes('ethnic') || lower.includes('tunic')) {
     return ClothingCategory.KURTI;
   }
   if (lower.includes('dress') || lower.includes('gown') || lower.includes('maxi') || lower.includes('frock')) {
@@ -137,7 +137,7 @@ export function inferCategoryFromText(text: string): ClothingCategory {
   if (lower.includes('t-shirt') || lower.includes('tshirt') || lower.includes('tee') || lower.includes('polo')) {
     return ClothingCategory.T_SHIRT;
   }
-  if (lower.includes('shirt') || lower.includes('oxford')) {
+  if (lower.includes('shirt') || lower.includes('oxford') || lower.includes('button-down')) {
     return ClothingCategory.SHIRT;
   }
   if (lower.includes('top') || lower.includes('blouse') || lower.includes('camisole') || lower.includes('crop')) {
@@ -146,16 +146,85 @@ export function inferCategoryFromText(text: string): ClothingCategory {
   return ClothingCategory.T_SHIRT;
 }
 
+/**
+ * Parses clean product titles, brands, and categories from complex e-commerce URLs
+ * when backend scraping is offline or unreachable.
+ */
+function extractSmartSlug(parsedUrl: URL): { title: string; brand: string; category: ClothingCategory } {
+  const host = parsedUrl.hostname.toLowerCase();
+  const rawParts = parsedUrl.pathname.split('/').filter(Boolean);
+
+  // Exclude non-product path parts: query prefixes, dp, gp, product, ids, tracking refs
+  const filtered = rawParts.filter((part) => {
+    const p = part.toLowerCase();
+    if (p.startsWith('ref=') || p.startsWith('qid=') || p.startsWith('sr=')) return false;
+    if (['dp', 'gp', 'product', 'products', 'item', 'p', 'buy', 'in', 'en', 'shop'].includes(p)) return false;
+    if (/^[A-Z0-9]{10}$/i.test(p)) return false; // ASIN or product ID like B0CNM4VGHP
+    if (/^\d+$/.test(p)) return false; // numeric IDs
+    return true;
+  });
+
+  // The primary title slug is the most descriptive non-trivial segment
+  let primarySlug = '';
+  for (const seg of filtered) {
+    if (seg.length > primarySlug.length) {
+      primarySlug = seg;
+    }
+  }
+
+  // Also inspect query string for product keywords (e.g. keywords=men%27s+dress...)
+  let queryKeywords = '';
+  const kw = parsedUrl.searchParams.get('keywords') || parsedUrl.searchParams.get('q');
+  if (kw) queryKeywords = kw;
+
+  if (!primarySlug && queryKeywords) {
+    primarySlug = queryKeywords;
+  } else if (!primarySlug) {
+    primarySlug = 'Fashion Apparel';
+  }
+
+  // Clean the slug into human title
+  let cleanTitle = decodeURIComponent(primarySlug)
+    .replace(/[-_]+/g, ' ')
+    .replace(/\.html?/gi, '')
+    .replace(/\b(?:ref|sspa|sr|\d+)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Capitalize title
+  cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+
+  // Detect brand
+  const words = cleanTitle.split(' ').filter(Boolean);
+  let brand = 'Fashion Brand';
+  if (host.includes('amazon')) {
+    brand = words.length > 0 && words[0].length >= 3 && words[0] !== 'Men' && words[0] !== 'Women' ? words[0] : 'Amazon Fashion';
+  } else if (host.includes('myntra')) {
+    brand = words.length > 0 ? words[0] : 'Myntra Studio';
+  } else if (host.includes('ajio')) {
+    brand = 'AJIO Trends';
+  } else if (host.includes('zara')) {
+    brand = 'ZARA';
+  } else if (host.includes('uniqlo')) {
+    brand = 'Uniqlo';
+  }
+
+  const fullTextToInspect = `${cleanTitle} ${parsedUrl.pathname.replace(/[-_/]/g, ' ')} ${queryKeywords}`;
+  const category = inferCategoryFromText(fullTextToInspect);
+
+  return { title: cleanTitle, brand, category };
+}
+
 export async function extractProductFromUrl(url: string): Promise<ExtractedProduct> {
   const check = validateProductUrl(url);
   if (!check.valid) {
     throw new Error(check.error);
   }
 
-  // 1. Try Backend API first
+  // 1. Try Backend API first (with 15s timeout for live e-commerce scraping)
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     const backendUrl = getBackendApiUrl();
 
     const apiRes = await fetch(`${backendUrl}/api/products/extract`, {
@@ -183,51 +252,51 @@ export async function extractProductFromUrl(url: string): Promise<ExtractedProdu
       };
     }
   } catch {
-    // Backend service not reachable or running standalone; use client heuristic parser
+    // Backend service not reachable or running standalone; use smart client URL parser
   }
 
   // 2. Client fallback heuristic
   const parsed = new URL(url);
   const host = parsed.hostname.toLowerCase();
-  const slug = parsed.pathname.split('/').filter(Boolean).pop() || 'Product';
-  const cleanTitle = slug.replace(/[-_]/g, ' ').replace(/\.html?/g, '').trim();
-  const title = cleanTitle.length > 2 ? cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1) : 'Fashion Product';
+  const { title, brand, category } = extractSmartSlug(parsed);
 
-  let category = inferCategoryFromText(title);
+  // Map category to high-fidelity studio garments
   let defaultImg = '/garments/shirt.svg';
-  let brand = 'Fashion Store';
-  let price = 1299;
+  let altImg = '/garments/tee.svg';
+  let price = 799;
 
-  if (host.includes('myntra')) {
-    brand = 'Roadster / HRX';
-    category = ClothingCategory.SHIRT;
-    defaultImg = '/garments/shirt.svg';
-    price = 999;
-  } else if (host.includes('amazon')) {
-    brand = 'Amazon Brand';
-    category = ClothingCategory.T_SHIRT;
-    defaultImg = '/garments/tee.svg';
-    price = 649;
-  } else if (host.includes('ajio')) {
-    brand = 'AVAASA / GAP';
-    category = ClothingCategory.KURTI;
-    defaultImg = '/garments/kurti.svg';
-    price = 849;
-  } else if (host.includes('zara')) {
-    brand = 'ZARA';
-    category = ClothingCategory.JACKET;
-    defaultImg = '/garments/jacket.svg';
-    price = 4590;
-  } else if (host.includes('hm.com') || host.includes('h-and-m')) {
-    brand = 'H&M';
-    category = ClothingCategory.SHIRT;
-    defaultImg = '/garments/shirt.svg';
-    price = 1499;
-  } else if (host.includes('uniqlo')) {
-    brand = 'Uniqlo';
-    category = ClothingCategory.T_SHIRT;
-    defaultImg = '/garments/tee.svg';
-    price = 1290;
+  switch (category) {
+    case ClothingCategory.KURTI:
+      defaultImg = '/garments/kurti.svg';
+      altImg = '/garments/shirt.svg';
+      price = 699;
+      break;
+    case ClothingCategory.SHIRT:
+      defaultImg = '/garments/shirt.svg';
+      altImg = '/garments/tee.svg';
+      price = 899;
+      break;
+    case ClothingCategory.JACKET:
+      defaultImg = '/garments/jacket.svg';
+      altImg = '/garments/shirt.svg';
+      price = 2499;
+      break;
+    case ClothingCategory.DRESS:
+      defaultImg = '/garments/kurti.svg';
+      altImg = '/garments/top.svg';
+      price = 1299;
+      break;
+    case ClothingCategory.TOP:
+      defaultImg = '/garments/top.svg';
+      altImg = '/garments/tee.svg';
+      price = 599;
+      break;
+    case ClothingCategory.T_SHIRT:
+    default:
+      defaultImg = '/garments/tee.svg';
+      altImg = '/garments/top.svg';
+      price = 499;
+      break;
   }
 
   return {
@@ -235,7 +304,7 @@ export async function extractProductFromUrl(url: string): Promise<ExtractedProdu
     brand,
     price,
     currency: 'INR',
-    images: [defaultImg, '/garments/tee.svg'],
+    images: [defaultImg, altImg],
     selectedImageUrl: defaultImg,
     originalUrl: url,
     category,

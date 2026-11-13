@@ -42,6 +42,9 @@ class LiveSession:
         self.latest_result_url: Optional[str] = None
         self.frames_received = 0
         self.frames_dropped = 0
+        self.last_error: Optional[str] = None
+        self.current_garment_name: Optional[str] = None
+        self.latest_result_garment: Optional[str] = None
 
     def touch(self):
         self.last_activity = time.time()
@@ -103,11 +106,14 @@ def get_live_session_status(session_id: str) -> Optional[LiveSessionStatusRespon
             progress = job.progress
             if job.status == "succeeded" and job.result_image_url:
                 session.latest_result_url = job.result_image_url
+                session.latest_result_garment = session.current_garment_name
                 session.is_processing = False
                 session.active_job_id = None
+                session.last_error = None
             elif job.status in ("failed", "cancelled"):
                 session.is_processing = False
                 session.active_job_id = None
+                session.last_error = job.error or "Inference failed."
 
     return LiveSessionStatusResponse(
         session_id=session.session_id,
@@ -119,7 +125,22 @@ def get_live_session_status(session_id: str) -> Optional[LiveSessionStatusRespon
         frames_received=session.frames_received,
         frames_dropped=session.frames_dropped,
         ai_configured=is_vton_configured(),
+        last_error=session.last_error,
+        current_garment_name=session.current_garment_name,
+        latest_result_garment=session.latest_result_garment,
     )
+
+
+def cancel_live_session_inference(session_id: str) -> bool:
+    """Cancels active in-flight inference for a live session without terminating the session."""
+    session = LIVE_SESSIONS.get(session_id)
+    if not session:
+        return False
+    if session.active_job_id:
+        cancel_job(session.active_job_id)
+        session.active_job_id = None
+    session.is_processing = False
+    return True
 
 
 def close_live_session(session_id: str) -> bool:
@@ -150,6 +171,7 @@ def submit_live_frame(session_id: str, req: LiveFrameSubmitRequest) -> LiveFrame
 
     session.touch()
     session.frames_received += 1
+    session.current_garment_name = req.garment_name
 
     # Check if a previously dispatched job completed
     if session.active_job_id:
@@ -157,11 +179,14 @@ def submit_live_frame(session_id: str, req: LiveFrameSubmitRequest) -> LiveFrame
         if job:
             if job.status == "succeeded" and job.result_image_url:
                 session.latest_result_url = job.result_image_url
+                session.latest_result_garment = session.current_garment_name
                 session.is_processing = False
                 session.active_job_id = None
+                session.last_error = None
             elif job.status in ("failed", "cancelled"):
                 session.is_processing = False
                 session.active_job_id = None
+                session.last_error = job.error or "Inference failed."
 
     # In-flight concurrency guard: drop frame if busy
     if session.is_processing:
@@ -201,11 +226,27 @@ def submit_live_frame(session_id: str, req: LiveFrameSubmitRequest) -> LiveFrame
         )
         session.active_job_id = job.job_id
 
+        # If job failed synchronously (e.g. invalid credentials or SSRF error)
+        if job.status == "failed":
+            session.is_processing = False
+            session.active_job_id = None
+            session.last_error = job.error
+            return LiveFrameSubmitResponse(
+                session_id=session_id,
+                status="failed",
+                dropped=False,
+                message=job.error or "Inference failed.",
+                result_image_url=session.latest_result_url,
+                can_fallback_to_canvas=True,
+            )
+
         # If job completed synchronously (e.g. mock test hook)
         if job.status == "succeeded" and job.result_image_url:
             session.latest_result_url = job.result_image_url
+            session.latest_result_garment = session.current_garment_name
             session.is_processing = False
             session.active_job_id = None
+            session.last_error = None
             return LiveFrameSubmitResponse(
                 session_id=session_id,
                 status="processed",
@@ -227,6 +268,7 @@ def submit_live_frame(session_id: str, req: LiveFrameSubmitRequest) -> LiveFrame
     except Exception as exc:
         session.is_processing = False
         session.active_job_id = None
+        session.last_error = str(exc)
         logger.error("Failed to submit live frame for session %s: %s", session_id, exc)
         return LiveFrameSubmitResponse(
             session_id=session_id,

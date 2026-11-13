@@ -40,6 +40,7 @@ export const LiveCameraPage: React.FC = () => {
   const [showLandmarks, setShowLandmarks] = useState(false);
   const [showMask, setShowMask] = useState(false);
   const [captured, setCaptured] = useState<string | null>(null);
+  const [capturedClean, setCapturedClean] = useState<string | null>(null);
 
   const {
     engineReady,
@@ -61,6 +62,7 @@ export const LiveCameraPage: React.FC = () => {
     removeGarment,
     toggleDebug,
     captureScreenshot,
+    captureCleanFrame,
     setError,
     setMaskVisible,
   } = useVirtualTryOn(canvasRef);
@@ -85,11 +87,13 @@ export const LiveCameraPage: React.FC = () => {
 
   const handleCapture = useCallback(() => {
     const dataUrl = captureScreenshot();
+    const cleanUrl = captureCleanFrame();
     if (dataUrl) {
       setCaptured(dataUrl);
+      setCapturedClean(cleanUrl || dataUrl);
       toast.success('Screenshot captured! You can now preview, save or download it.');
     }
-  }, [captureScreenshot]);
+  }, [captureScreenshot, captureCleanFrame]);
 
   const handleDownload = useCallback(() => {
     if (!captured) return;
@@ -135,8 +139,9 @@ export const LiveCameraPage: React.FC = () => {
       }
 
       const effectiveMode = cfg.configured ? 'cloud-genai' : 'client-high-res';
+      const personImageToUse = (effectiveMode === 'cloud-genai' && capturedClean) ? capturedClean : captured;
       const job = await VirtualTryOnService.generateTryOn({
-        personImage: captured,
+        personImage: personImageToUse,
         garmentImage: currentGarment.imageUrl,
         garmentName: currentGarment.name,
         category: currentGarment.category,
@@ -196,6 +201,8 @@ export const LiveCameraPage: React.FC = () => {
   const [aiLiveProcessing, setAiLiveProcessing] = useState(false);
   const [aiLiveProgress, setAiLiveProgress] = useState(0);
   const [aiLiveResultUrl, setAiLiveResultUrl] = useState<string | null>(null);
+  const [aiLiveResultGarment, setAiLiveResultGarment] = useState<string | null>(null);
+  const [aiLiveError, setAiLiveError] = useState<string | null>(null);
   const [aiLiveConfigured, setAiLiveConfigured] = useState<boolean | null>(null);
   const [aiLiveDroppedCount, setAiLiveDroppedCount] = useState(0);
   const [aiLiveSampledCount, setAiLiveSampledCount] = useState(0);
@@ -207,10 +214,12 @@ export const LiveCameraPage: React.FC = () => {
       const currentGarment = garment || (selectedGarment as any) || FULL_PRODUCT_CATALOG[0];
       if (!currentGarment) return;
 
-      const frameDataUrl = captureScreenshot();
+      // Prefer clean webcam frame (without 2D canvas overlay) for photorealistic AI diffusion
+      const frameDataUrl = captureCleanFrame() || captureScreenshot();
       if (!frameDataUrl) return;
 
       setAiLiveProcessing(true);
+      setAiLiveError(null);
       setAiLiveSampledCount((c) => c + 1);
       try {
         const res = await VirtualTryOnService.submitLiveFrame(
@@ -224,6 +233,7 @@ export const LiveCameraPage: React.FC = () => {
           setAiLiveDroppedCount((prev) => prev + 1);
         } else if (res.status === 'processed' && res.resultImageUrl) {
           setAiLiveResultUrl(res.resultImageUrl);
+          setAiLiveResultGarment(currentGarment.name);
           setAiLiveProcessing(false);
           setAiLiveProgress(100);
           setAiLiveLastSampleTime(Date.now());
@@ -231,12 +241,16 @@ export const LiveCameraPage: React.FC = () => {
         } else if (res.status === 'unconfigured') {
           setAiLiveConfigured(false);
           setAiLiveProcessing(false);
+        } else if (res.status === 'failed') {
+          setAiLiveProcessing(false);
+          setAiLiveError(res.message);
         }
-      } catch {
+      } catch (err: unknown) {
         setAiLiveProcessing(false);
+        setAiLiveError(err instanceof Error ? err.message : 'Live AI frame submission failed');
       }
     },
-    [cameraActive, garment, selectedGarment, captureScreenshot]
+    [cameraActive, garment, selectedGarment, captureCleanFrame, captureScreenshot]
   );
 
   // Poll live session status when processing or active
@@ -252,10 +266,15 @@ export const LiveCameraPage: React.FC = () => {
           setAiLiveProgress(status.jobProgress);
         }
         setAiLiveDroppedCount(status.framesDropped);
+        if (status.lastError) {
+          setAiLiveError(status.lastError);
+        }
         if (status.latestResultUrl && status.latestResultUrl !== aiLiveResultUrl) {
           setAiLiveResultUrl(status.latestResultUrl);
+          setAiLiveResultGarment(status.latestResultGarment || (garment?.name ?? 'Selected Garment'));
           setAiLiveLastSampleTime(Date.now());
           setAiLiveProcessing(false);
+          setAiLiveError(null);
         }
       } catch {
         // Polling retry
@@ -263,7 +282,7 @@ export const LiveCameraPage: React.FC = () => {
     }, 1500);
 
     return () => clearInterval(pollInterval);
-  }, [aiLiveEnabled, aiLiveSessionId, aiLiveResultUrl]);
+  }, [aiLiveEnabled, aiLiveSessionId, aiLiveResultUrl, garment]);
 
   // Periodic keyframe sampler (every 8 seconds when active and not busy)
   useEffect(() => {
@@ -278,6 +297,52 @@ export const LiveCameraPage: React.FC = () => {
     return () => clearInterval(sampleInterval);
   }, [aiLiveEnabled, aiLiveSessionId, cameraActive, aiLiveProcessing, sampleAndSubmitLiveFrame]);
 
+  // Garment change handler that safely manages in-flight AI keyframe state
+  const handleGarmentSelect = useCallback(
+    async (url: string, name: string, id: string) => {
+      void loadGarmentUrl(url, name, id);
+      toast.success(`Selected garment: ${name}`);
+      if (aiLiveEnabled && aiLiveSessionId) {
+        // Cancel previous in-flight inference for old garment
+        await VirtualTryOnService.cancelLiveSessionInference(aiLiveSessionId);
+        setAiLiveProcessing(false);
+        setAiLiveError(null);
+        // Queue fresh keyframe sample for new garment
+        setTimeout(() => {
+          void sampleAndSubmitLiveFrame(aiLiveSessionId);
+        }, 300);
+      }
+    },
+    [loadGarmentUrl, aiLiveEnabled, aiLiveSessionId, sampleAndSubmitLiveFrame]
+  );
+
+  const handleGarmentUpload = useCallback(
+    async (file: File) => {
+      void loadGarmentFile(file);
+      toast.success(`Uploaded garment: ${file.name}`);
+      if (aiLiveEnabled && aiLiveSessionId) {
+        await VirtualTryOnService.cancelLiveSessionInference(aiLiveSessionId);
+        setAiLiveProcessing(false);
+        setAiLiveError(null);
+        setTimeout(() => {
+          void sampleAndSubmitLiveFrame(aiLiveSessionId);
+        }, 500);
+      }
+    },
+    [loadGarmentFile, aiLiveEnabled, aiLiveSessionId, sampleAndSubmitLiveFrame]
+  );
+
+  const handleGarmentRemove = useCallback(() => {
+    removeGarment();
+    toast.info('Garment removed.');
+    if (aiLiveEnabled && aiLiveSessionId) {
+      void VirtualTryOnService.cancelLiveSessionInference(aiLiveSessionId);
+      setAiLiveProcessing(false);
+      setAiLiveResultUrl(null);
+      setAiLiveResultGarment(null);
+    }
+  }, [removeGarment, aiLiveEnabled, aiLiveSessionId]);
+
   const toggleAiLivePreview = useCallback(async () => {
     if (aiLiveEnabled) {
       if (aiLiveSessionId) {
@@ -286,6 +351,7 @@ export const LiveCameraPage: React.FC = () => {
       setAiLiveEnabled(false);
       setAiLiveSessionId(null);
       setAiLiveProcessing(false);
+      setAiLiveError(null);
       toast.info('AI Live Preview deactivated. Instant Canvas tracking active.');
     } else {
       toast.loading('Initializing AI Live Preview session...', { id: 'ai-live-toggle' });
@@ -295,6 +361,7 @@ export const LiveCameraPage: React.FC = () => {
       const session = await VirtualTryOnService.createLiveSession();
       setAiLiveSessionId(session.sessionId);
       setAiLiveEnabled(true);
+      setAiLiveError(null);
 
       if (!cfg.configured) {
         toast.info(
@@ -324,6 +391,8 @@ export const LiveCameraPage: React.FC = () => {
       void VirtualTryOnService.closeLiveSession(aiLiveSessionId);
       setAiLiveSessionId(null);
       setAiLiveEnabled(false);
+      setAiLiveProcessing(false);
+      setAiLiveError(null);
     }
     stopCamera();
   }, [aiLiveSessionId, stopCamera]);
@@ -661,6 +730,22 @@ export const LiveCameraPage: React.FC = () => {
 
               {/* Content area */}
               <div className="mt-4">
+                {aiLiveError && (
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-rose-500/30 bg-rose-950/25 p-3.5 text-xs text-rose-300 mb-4">
+                    <div className="flex items-center gap-2.5">
+                      <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
+                      <span>{aiLiveError}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => aiLiveSessionId && void sampleAndSubmitLiveFrame(aiLiveSessionId)}
+                      className="rounded-lg bg-rose-900/40 hover:bg-rose-900/60 border border-rose-500/30 px-3 py-1 text-[11px] font-semibold text-rose-200 shrink-0 transition"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+
                 {aiLiveConfigured === false ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-950/20 p-4">
                     <AlertCircle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
@@ -696,12 +781,22 @@ export const LiveCameraPage: React.FC = () => {
 
                     <div className="flex flex-1 flex-col gap-3">
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                           <span className="text-xs font-bold text-slate-200">
                             Photorealistic Fabric Drape & Lighting Synthesized
                           </span>
+                          {aiLiveResultGarment && (
+                            <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 text-[10px] font-mono text-amber-300">
+                              Garment: {aiLiveResultGarment}
+                            </span>
+                          )}
                         </div>
+                        {garment && aiLiveResultGarment && garment.name !== aiLiveResultGarment && (
+                          <p className="text-[11px] text-amber-400/90 mt-1">
+                            New garment selected ({garment.name}) — generating updated keyframe...
+                          </p>
+                        )}
                         <p className="text-xs text-slate-400 mt-1">
                           {aiLiveLastSampleTime
                             ? `Last updated: ${new Date(aiLiveLastSampleTime).toLocaleTimeString()}`
@@ -730,11 +825,11 @@ export const LiveCameraPage: React.FC = () => {
                           onClick={() => {
                             if (!aiLiveResultUrl) return;
                             StorageService.saveLook({
-                              title: garment?.name ? `AI Live Look: ${garment.name}` : 'AI Live Try-On',
+                              title: aiLiveResultGarment ? `AI Live Look: ${aiLiveResultGarment}` : 'AI Live Try-On',
                               personImageUrl: aiLiveResultUrl,
                               resultImageUrl: aiLiveResultUrl,
                               garmentId: garment?.id || 'live-garment',
-                              garmentName: garment?.name || 'Selected Garment',
+                              garmentName: aiLiveResultGarment || garment?.name || 'Selected Garment',
                               garmentCategory: garment?.category || ClothingCategory.T_SHIRT,
                               garmentImageUrl: garment?.imageUrl || '/garments/tee.svg',
                               isFavorite: true,
@@ -775,7 +870,7 @@ export const LiveCameraPage: React.FC = () => {
                               resultImageUrl: aiLiveResultUrl,
                               aiImageUrl: aiLiveResultUrl,
                               garmentImageUrl: currentGarment.imageUrl,
-                              garmentName: currentGarment.name,
+                              garmentName: aiLiveResultGarment || currentGarment.name,
                               garmentCategory: currentGarment.category,
                               timestamp: Date.now(),
                               modelUsed: 'IDM-VTON (Diffusion)',
@@ -813,18 +908,9 @@ export const LiveCameraPage: React.FC = () => {
         <GarmentPanel
           currentGarmentId={garment?.id ?? null}
           disabled={!engineReady}
-          onSelect={(url, name, id) => {
-            void loadGarmentUrl(url, name, id);
-            toast.success(`Selected garment: ${name}`);
-          }}
-          onUpload={(file) => {
-            void loadGarmentFile(file);
-            toast.success(`Uploaded garment: ${file.name}`);
-          }}
-          onRemove={() => {
-            removeGarment();
-            toast.info('Garment removed.');
-          }}
+          onSelect={handleGarmentSelect}
+          onUpload={handleGarmentUpload}
+          onRemove={handleGarmentRemove}
         />
       </div>
 

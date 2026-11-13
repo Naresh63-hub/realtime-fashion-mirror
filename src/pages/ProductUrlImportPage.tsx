@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Link2,
   ExternalLink,
@@ -9,13 +9,19 @@ import {
   AlertCircle,
   X,
   Search,
+  Server,
+  Check,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
 import {
   extractProductFromUrl,
+  getBackendApiUrl,
   SUPPORTED_RETAILERS,
 } from '../services/productExtractor';
+import { StorageService } from '../services/storageService';
 import type { ExtractedProduct, Product } from '../types';
 import { ClothingCategory } from '../types';
 import { Spinner } from '../components/ui';
@@ -29,6 +35,62 @@ export const ProductUrlImportPage: React.FC = () => {
   const [extracted, setExtracted] = useState<ExtractedProduct | null>(null);
   const [selectedImage, setSelectedImage] = useState<string>('');
   const fallbackUploadRef = useRef<HTMLInputElement>(null);
+
+  // Backend connectivity state
+  const [backendUrl, setBackendUrl] = useState(getBackendApiUrl());
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'standalone'>('checking');
+  const [showBackendConfig, setShowBackendConfig] = useState(false);
+  const [customBackendInput, setCustomBackendInput] = useState(getBackendApiUrl());
+  const [savingBackend, setSavingBackend] = useState(false);
+
+  const checkBackendHealth = async (urlToCheck: string) => {
+    try {
+      setBackendStatus('checking');
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch(`${urlToCheck.replace(/\/+$/, '')}/health`, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (res.ok) {
+        setBackendStatus('online');
+        return true;
+      }
+    } catch {
+      // offline / standalone
+    }
+    setBackendStatus('standalone');
+    return false;
+  };
+
+  useEffect(() => {
+    const current = getBackendApiUrl();
+    setBackendUrl(current);
+    setCustomBackendInput(current);
+    void checkBackendHealth(current);
+  }, []);
+
+  const handleSaveCustomBackend = async () => {
+    const trimmed = customBackendInput.trim().replace(/\/+$/, '');
+    if (!trimmed || (!trimmed.startsWith('http://') && !trimmed.startsWith('https://'))) {
+      toast.error('Please enter a valid backend URL (e.g. https://your-service.onrender.com)');
+      return;
+    }
+
+    try {
+      setSavingBackend(true);
+      toast.loading('Testing backend health...', { id: 'test-backend' });
+      const isOnline = await checkBackendHealth(trimmed);
+      StorageService.updatePreferences({ cloudVtonApiUrl: trimmed });
+      setBackendUrl(trimmed);
+      if (isOnline) {
+        toast.success('Live Backend connected successfully! Live store scraping is active.', { id: 'test-backend' });
+        setShowBackendConfig(false);
+      } else {
+        toast.warning('URL saved, but health check did not respond. Verify service is deployed and running.', { id: 'test-backend' });
+      }
+    } finally {
+      setSavingBackend(false);
+    }
+  };
 
   const handleFetch = async (targetUrl?: string) => {
     const url = targetUrl || urlInput;
@@ -196,6 +258,63 @@ export const ProductUrlImportPage: React.FC = () => {
             ))}
           </div>
         </div>
+
+        {/* Backend Connectivity Status & Endpoint Drawer */}
+        <div className="pt-3 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                backendStatus === 'online'
+                  ? 'bg-emerald-400 shadow-sm shadow-emerald-400/80 animate-pulse'
+                  : 'bg-amber-400'
+              }`}
+            />
+            <span className="font-mono text-slate-300">
+              {backendStatus === 'online'
+                ? 'Live Web Scraper Connected (FastAPI)'
+                : 'Standalone Smart URL Parser (FastAPI Offline / Unconfigured)'}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowBackendConfig(!showBackendConfig)}
+            className="flex items-center gap-1 font-mono text-[11px] text-indigo-400 hover:text-indigo-300 transition"
+          >
+            <Server className="h-3 w-3" />
+            <span>Configure Backend URL</span>
+            {showBackendConfig ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+        </div>
+
+        {/* Expandable Backend URL Setting */}
+        {showBackendConfig && (
+          <div className="rounded-xl border border-indigo-500/20 bg-indigo-950/20 p-4 space-y-3 animate-fade-in text-xs">
+            <p className="text-slate-300 leading-relaxed">
+              To extract live store photos and real-time prices directly from Amazon, Myntra, or Zara, enter your deployed Render backend URL below:
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="url"
+                value={customBackendInput}
+                onChange={(e) => setCustomBackendInput(e.target.value)}
+                placeholder="https://your-backend.onrender.com"
+                className="flex-1 rounded-lg border border-white/[0.1] bg-black/60 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none font-mono"
+              />
+              <button
+                type="button"
+                onClick={handleSaveCustomBackend}
+                disabled={savingBackend}
+                className="flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-500 transition disabled:opacity-50"
+              >
+                {savingBackend ? <Spinner label="Saving..." /> : <span>Connect</span>}
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-400 font-mono">
+              Saved locally in browser preferences (cloudVtonApiUrl). Enables live CORS-safe HTML parsing.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Error Banner with Manual Fallback option */}
@@ -253,10 +372,17 @@ export const ProductUrlImportPage: React.FC = () => {
               <h2 className="font-display font-bold text-xl sm:text-2xl text-white mt-2">{extracted.title}</h2>
               <div className="flex flex-wrap items-center gap-2 mt-1.5">
                 <p className="text-xs text-indigo-400 font-semibold">{extracted.brand} • {extracted.retailer}</p>
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-mono text-amber-300 border border-amber-500/20">
-                  <AlertCircle className="h-3 w-3" />
-                  <span>IMPORTED SILHOUETTE</span>
-                </span>
+                {extracted.images[0]?.startsWith('http') ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono text-emerald-300 border border-emerald-500/20">
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span>LIVE STORE PHOTOGRAPHY</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-mono text-amber-300 border border-amber-500/20" title="Connect Render backend URL above to extract live store images">
+                    <AlertCircle className="h-3 w-3" />
+                    <span>PARSED STUDIO SILHOUETTE</span>
+                  </span>
+                )}
               </div>
             </div>
             {extracted.price && (

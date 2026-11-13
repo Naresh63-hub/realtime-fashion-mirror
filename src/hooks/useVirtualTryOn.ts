@@ -572,6 +572,34 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
     return refs.current.renderer?.captureDataURL() ?? null;
   }, []);
 
+  /** Captures the authentic clean webcam frame of the user without 2D clothing overlays for AI synthesis. */
+  const captureCleanFrame = useCallback((): string | null => {
+    const video = refs.current.camera.getVideoElement();
+    if (!video || !refs.current.camera.isActive()) {
+      return refs.current.renderer?.captureDataURL() ?? null;
+    }
+    try {
+      const width = video.videoWidth || 1280;
+      const height = video.videoHeight || 720;
+      const offscreen = document.createElement('canvas');
+      offscreen.width = width;
+      offscreen.height = height;
+      const ctx = offscreen.getContext('2d');
+      if (!ctx) return refs.current.renderer?.captureDataURL() ?? null;
+      const isMirrored = refs.current.camera.getFacingMode() === 'user';
+      ctx.save();
+      if (isMirrored) {
+        ctx.translate(width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(video, 0, 0, width, height);
+      ctx.restore();
+      return offscreen.toDataURL('image/jpeg', 0.92);
+    } catch {
+      return refs.current.renderer?.captureDataURL() ?? null;
+    }
+  }, []);
+
   /** Debug mask view gate — also lazily boots the segmenter on first use. */
   const setMaskVisible = useCallback((visible: boolean) => {
     segDebugRef.current = visible;
@@ -619,6 +647,7 @@ export function useVirtualTryOn(canvasRef: React.RefObject<HTMLCanvasElement | n
     removeGarment,
     toggleDebug,
     captureScreenshot,
+    captureCleanFrame,
     setError,
     setMaskVisible,
   };

@@ -346,6 +346,9 @@ export interface LiveSessionStatus {
   framesReceived: number;
   framesDropped: number;
   aiConfigured: boolean;
+  lastError?: string;
+  currentGarmentName?: string;
+  latestResultGarment?: string;
 }
 
 

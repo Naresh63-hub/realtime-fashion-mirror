@@ -193,5 +193,49 @@ describe('VirtualTryOnService', () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  it('cancels in-flight frame inference and reflects error states in status', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (url: RequestInfo | URL, init?: RequestInit) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('/cancel') && init?.method === 'POST') {
+        return new Response(JSON.stringify({ message: 'Cancelled', cancelled: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (urlStr.includes('/api/live/sessions/session_err')) {
+        return new Response(
+          JSON.stringify({
+            session_id: 'session_err',
+            status: 'active',
+            is_processing: false,
+            job_progress: 0,
+            latest_result_url: null,
+            frames_received: 1,
+            frames_dropped: 0,
+            ai_configured: true,
+            last_error: 'Authentication failed: Invalid VTON_API_KEY.',
+            current_garment_name: 'Blazer',
+            latest_result_garment: null,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      return new Response('{}', { status: 200 });
+    };
+
+    try {
+      const cancelled = await VirtualTryOnService.cancelLiveSessionInference('session_123');
+      expect(cancelled).toBe(true);
+
+      const status = await VirtualTryOnService.getLiveSessionStatus('session_err');
+      expect(status.lastError).toBe('Authentication failed: Invalid VTON_API_KEY.');
+      expect(status.currentGarmentName).toBe('Blazer');
+      expect(status.isProcessing).toBe(false);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });
 

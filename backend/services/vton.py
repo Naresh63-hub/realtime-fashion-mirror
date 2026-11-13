@@ -61,9 +61,36 @@ def get_vton_provider_name() -> str:
 
 def is_vton_configured() -> bool:
     """Returns True if a real generative AI inference provider is configured."""
+    provider = get_vton_provider_name()
     key = get_vton_api_key()
-    url = os.getenv("VTON_API_URL", "").strip()
-    return bool(key or url)
+    if provider == "replicate":
+        return bool(key)
+    if provider == "custom_http":
+        return bool(os.getenv("VTON_API_URL", "").strip())
+    return bool(key)
+
+
+def _resolve_garment_asset(garment_str: str) -> str:
+    """If garment is a local relative asset path like /garments/tee.svg, convert to base64 data URL."""
+    if not garment_str or garment_str.startswith("data:") or garment_str.startswith("http://") or garment_str.startswith("https://"):
+        return garment_str
+    cleaned = garment_str.lstrip("/")
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    candidates = [
+        os.path.join(base_dir, "public", cleaned),
+        os.path.join("public", cleaned),
+    ]
+    for p in candidates:
+        if os.path.exists(p) and os.path.isfile(p):
+            try:
+                with open(p, "rb") as f:
+                    content = f.read()
+                mime = "image/svg+xml" if p.endswith(".svg") else "image/png"
+                b64 = base64.b64encode(content).decode("ascii")
+                return f"data:{mime};base64,{b64}"
+            except Exception:
+                pass
+    return garment_str
 
 
 def get_vton_config() -> TryOnConfigResponse:
@@ -322,7 +349,7 @@ async def run_cloud_vton_worker(job_id: str, req: TryOnJobCreateRequest) -> None
         "version": model_version,
         "input": {
             "human_img": req.person_image,
-            "garm_img": req.garment_image,
+            "garm_img": _resolve_garment_asset(req.garment_image),
             "garment_des": req.garment_description or f"{req.garment_name} ({req.category})",
             "category": replicate_category,
             "crop": False,

@@ -54,4 +54,15 @@ describe('Product URL Extractor Service', () => {
     expect(product.images.length).toBeGreaterThan(0);
     expect(product.originalUrl).toBe('https://store.example.com/products/denim-indigo-shirt');
   });
+
+  it('correctly filters Amazon ref tracking and ASIN from product title', async () => {
+    const product = await extractProductFromUrl(
+      'https://www.amazon.in/DEELMO-Cotton-Mandarin-Collar-Regular/dp/B0CNM4VGHP/ref=sr_1_4_sspa'
+    );
+    expect(product.title).not.toContain('ref=');
+    expect(product.title).not.toContain('sr_1_4');
+    expect(product.title).toContain('DEELMO');
+    expect(product.brand).toBe('DEELMO');
+    expect(product.category).toBe(ClothingCategory.KURTI);
+  });
 });
