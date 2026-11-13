@@ -23,7 +23,7 @@ import { VirtualTryOnService } from '../services/virtualTryOnService';
 import { FULL_PRODUCT_CATALOG } from '../services/garmentCatalog';
 import { extractProductFromUrl } from '../services/productExtractor';
 import { Spinner } from '../components/ui';
-import type { TryOnJobStatus } from '../types';
+import { ClothingCategory, type TryOnJobStatus } from '../types';
 
 export const PhotoUploadPage: React.FC = () => {
   const {
@@ -37,6 +37,7 @@ export const PhotoUploadPage: React.FC = () => {
   } = useApp();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const garmentFileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -134,6 +135,37 @@ export const PhotoUploadPage: React.FC = () => {
     reader.onerror = () => {
       setError('Failed to read image file.');
       toast.error('Failed to read image file.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleGarmentFileUpload = (file: File) => {
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please upload a valid garment image (JPG, PNG, WebP).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Custom Garment Photo';
+      setSelectedGarment({
+        id: `uploaded_${Date.now()}`,
+        sku: `CST-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+        name: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
+        category: ClothingCategory.SHIRT,
+        priceINR: 0,
+        description: 'Locally uploaded photographic garment image.',
+        imageUrl: dataUrl,
+        swatch: 'from-fuchsia-600 to-indigo-700',
+        brand: 'Custom Garment',
+        retailerUrl: '',
+        images: [dataUrl],
+        rating: 5.0,
+        inStock: true,
+        sizes: ['S', 'M', 'L', 'XL'],
+      });
+      toast.success('Real garment photo loaded into studio!');
     };
     reader.readAsDataURL(file);
   };
@@ -588,13 +620,35 @@ export const PhotoUploadPage: React.FC = () => {
               </div>
             )}
 
+            {/* Hidden Garment File Input */}
+            <input
+              ref={garmentFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.[0]) handleGarmentFileUpload(e.target.files[0]);
+                e.target.value = '';
+              }}
+            />
+
             {/* Quick Garment Switcher */}
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-2">
-                Quick Wardrobe Switch:
-              </p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="font-mono text-[11px] uppercase tracking-wider font-semibold text-slate-400">
+                  Real Apparel Wardrobe:
+                </p>
+                <button
+                  type="button"
+                  onClick={() => garmentFileInputRef.current?.click()}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-fuchsia-500/30 bg-fuchsia-600/10 hover:bg-fuchsia-600/20 px-2.5 py-1 text-[11px] font-semibold text-fuchsia-300 transition"
+                >
+                  <UploadCloud className="h-3.5 w-3.5" />
+                  <span>Upload Real Garment</span>
+                </button>
+              </div>
               <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                {FULL_PRODUCT_CATALOG.slice(0, 6).map((prod) => (
+                {FULL_PRODUCT_CATALOG.map((prod) => (
                   <button
                     key={prod.id}
                     type="button"
@@ -602,13 +656,14 @@ export const PhotoUploadPage: React.FC = () => {
                       setSelectedGarment(prod);
                       toast.info(`Selected ${prod.name}`);
                     }}
-                    className={`flex-shrink-0 w-14 h-14 rounded-xl border p-1 transition ${
+                    title={prod.name}
+                    className={`flex-shrink-0 w-16 h-16 rounded-xl border p-1 transition ${
                       selectedGarment?.id === prod.id
                         ? 'border-indigo-500 bg-indigo-600/25 ring-2 ring-indigo-500/40 shadow-md'
-                        : 'border-white/[0.08] bg-white/[0.03] hover:border-indigo-400/50'
+                        : 'border-white/[0.08] bg-[#07080d]/80 hover:border-indigo-400/50'
                     }`}
                   >
-                    <img src={prod.imageUrl} alt={prod.name} className="h-full w-full object-contain" />
+                    <img src={prod.imageUrl} alt={prod.name} className="h-full w-full object-contain drop-shadow-md" />
                   </button>
                 ))}
               </div>

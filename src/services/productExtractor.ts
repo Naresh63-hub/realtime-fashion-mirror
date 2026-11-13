@@ -215,10 +215,56 @@ function extractSmartSlug(parsedUrl: URL): { title: string; brand: string; categ
   return { title: cleanTitle, brand, category };
 }
 
+export function isDirectImageUrl(url: string): boolean {
+  if (!url) return false;
+  try {
+    const p = new URL(url);
+    const path = p.pathname.toLowerCase();
+    if (/\.(jpg|jpeg|png|webp|avif|gif)($|\?)/i.test(path) || /\.(jpg|jpeg|png|webp|avif|gif)($|\?)/i.test(url)) {
+      return true;
+    }
+    if (p.hostname.includes('media-amazon.com') && path.includes('/images/')) {
+      return true;
+    }
+    if (p.hostname.includes('myntassets.com') || p.hostname.includes('unsplash.com')) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 export async function extractProductFromUrl(url: string): Promise<ExtractedProduct> {
   const check = validateProductUrl(url);
   if (!check.valid) {
     throw new Error(check.error);
+  }
+
+  // 0. Direct Image URL check (e.g. copied from Amazon, Myntra, Unsplash or file host)
+  if (isDirectImageUrl(url)) {
+    const parsed = new URL(url);
+    const filename = parsed.pathname.split('/').filter(Boolean).pop() || 'fashion-item';
+    const cleanName = decodeURIComponent(filename)
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[-_]+/g, ' ')
+      .trim();
+    const title = cleanName.length > 3 ? cleanName.charAt(0).toUpperCase() + cleanName.slice(1) : 'Imported Fashion Apparel';
+    const category = inferCategoryFromText(title + ' ' + parsed.pathname);
+
+    return {
+      title,
+      brand: 'Direct Image Import',
+      price: 0,
+      currency: 'INR',
+      images: [url],
+      selectedImageUrl: url,
+      originalUrl: url,
+      category,
+      retailer: parsed.hostname.replace('www.', '').split('.')[0].toUpperCase(),
+      description: `High-resolution garment photo loaded directly from ${parsed.hostname}.`,
+      sizes: ['S', 'M', 'L', 'XL'],
+    };
   }
 
   // 1. Try Backend API first (with 15s timeout for live e-commerce scraping)
@@ -242,8 +288,8 @@ export async function extractProductFromUrl(url: string): Promise<ExtractedProdu
         brand: data.brand || 'Fashion Retailer',
         price: data.price,
         currency: data.currency || 'INR',
-        images: data.images?.length > 0 ? data.images : ['/garments/shirt.svg'],
-        selectedImageUrl: data.selected_image_url || data.images?.[0] || '/garments/shirt.svg',
+        images: data.images?.length > 0 ? data.images : ['/garments/kurta.png'],
+        selectedImageUrl: data.selected_image_url || data.images?.[0] || '/garments/kurta.png',
         originalUrl: data.original_url || url,
         category: inferCategoryFromText(data.category || data.title),
         retailer: data.retailer || 'Online Store',
@@ -260,42 +306,42 @@ export async function extractProductFromUrl(url: string): Promise<ExtractedProdu
   const host = parsed.hostname.toLowerCase();
   const { title, brand, category } = extractSmartSlug(parsed);
 
-  // Map category to high-fidelity studio garments
-  let defaultImg = '/garments/shirt.svg';
-  let altImg = '/garments/tee.svg';
+  // Map category to high-fidelity studio real photographic garments
+  let defaultImg = '/garments/shirt.png';
+  let altImg = '/garments/tee.png';
   let price = 799;
 
   switch (category) {
     case ClothingCategory.KURTI:
-      defaultImg = '/garments/kurti.svg';
-      altImg = '/garments/shirt.svg';
-      price = 699;
+      defaultImg = '/garments/kurta.png';
+      altImg = '/garments/kurti.png';
+      price = 480;
       break;
     case ClothingCategory.SHIRT:
-      defaultImg = '/garments/shirt.svg';
-      altImg = '/garments/tee.svg';
-      price = 899;
+      defaultImg = '/garments/shirt.png';
+      altImg = '/garments/kurta.png';
+      price = 1899;
       break;
     case ClothingCategory.JACKET:
-      defaultImg = '/garments/jacket.svg';
-      altImg = '/garments/shirt.svg';
-      price = 2499;
+      defaultImg = '/garments/jacket.png';
+      altImg = '/garments/bomber.png';
+      price = 4999;
       break;
     case ClothingCategory.DRESS:
-      defaultImg = '/garments/kurti.svg';
-      altImg = '/garments/top.svg';
-      price = 1299;
+      defaultImg = '/garments/dress.png';
+      altImg = '/garments/kurti.png';
+      price = 2899;
       break;
     case ClothingCategory.TOP:
-      defaultImg = '/garments/top.svg';
-      altImg = '/garments/tee.svg';
-      price = 599;
+      defaultImg = '/garments/top.png';
+      altImg = '/garments/tee.png';
+      price = 1199;
       break;
     case ClothingCategory.T_SHIRT:
     default:
-      defaultImg = '/garments/tee.svg';
-      altImg = '/garments/top.svg';
-      price = 499;
+      defaultImg = '/garments/tee.png';
+      altImg = '/garments/shirt.png';
+      price = 799;
       break;
   }
 

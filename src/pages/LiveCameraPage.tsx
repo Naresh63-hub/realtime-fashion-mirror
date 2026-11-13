@@ -113,7 +113,7 @@ export const LiveCameraPage: React.FC = () => {
       garmentId: garment?.id || 'live-garment',
       garmentName: garment?.name || 'Selected Garment',
       garmentCategory: garment?.category || ClothingCategory.T_SHIRT,
-      garmentImageUrl: garment?.imageUrl || '/garments/tee.svg',
+      garmentImageUrl: garment?.imageUrl || '/garments/kurta.png',
       isFavorite: false,
     });
     refreshSavedLooks();
@@ -831,7 +831,7 @@ export const LiveCameraPage: React.FC = () => {
                               garmentId: garment?.id || 'live-garment',
                               garmentName: aiLiveResultGarment || garment?.name || 'Selected Garment',
                               garmentCategory: garment?.category || ClothingCategory.T_SHIRT,
-                              garmentImageUrl: garment?.imageUrl || '/garments/tee.svg',
+                              garmentImageUrl: garment?.imageUrl || '/garments/kurta.png',
                               isFavorite: true,
                             });
                             refreshSavedLooks();

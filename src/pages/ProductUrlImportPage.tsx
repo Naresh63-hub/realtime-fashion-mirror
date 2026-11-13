@@ -207,7 +207,7 @@ export const ProductUrlImportPage: React.FC = () => {
       {/* URL Input Form */}
       <div className="aura-panel p-6 sm:p-8 space-y-5 shadow-2xl relative">
         <label htmlFor="product-url-input" className="block font-mono text-xs font-bold uppercase tracking-wider text-slate-300">
-          Store Product URL
+          Store Product URL or Direct Image Link
         </label>
 
         <div className="flex flex-col sm:flex-row gap-3">
@@ -218,7 +218,7 @@ export const ProductUrlImportPage: React.FC = () => {
               type="url"
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="Paste product link (e.g. https://www.myntra.com/... or Zara, Amazon)"
+              placeholder="Paste store link (Amazon, Myntra, Zara) or direct image URL (jpg, png, webp)"
               className="w-full rounded-xl border border-white/[0.1] bg-black/60 pl-10 pr-4 py-3 text-xs sm:text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition shadow-inner"
             />
           </div>
@@ -226,7 +226,7 @@ export const ProductUrlImportPage: React.FC = () => {
             type="button"
             onClick={() => handleFetch()}
             disabled={loading}
-            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-7 py-3 text-xs sm:text-sm font-bold text-white shadow-lg shadow-indigo-600/30 hover:opacity-95 disabled:opacity-40 transition"
+            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-lg shadow-indigo-600/30 hover:opacity-95 disabled:opacity-40 transition"
           >
             {loading ? (
               <Spinner label="Extracting..." />
@@ -237,7 +237,20 @@ export const ProductUrlImportPage: React.FC = () => {
               </>
             )}
           </button>
+          <button
+            type="button"
+            onClick={() => fallbackUploadRef.current?.click()}
+            className="flex items-center justify-center gap-2 rounded-xl border border-fuchsia-500/40 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 px-5 py-3 text-xs sm:text-sm font-bold text-fuchsia-300 transition"
+            title="Upload any real clothing photo directly from your device"
+          >
+            <UploadCloud className="h-4 w-4" />
+            <span>Upload Photo</span>
+          </button>
         </div>
+
+        <p className="text-[11px] text-slate-400">
+          💡 <strong className="text-slate-300">Tip:</strong> You can paste an e-commerce shopping link, paste a direct photo link (Right-click garment on Amazon &rarr; <span className="text-indigo-400">&ldquo;Copy image address&rdquo;</span>), or click <strong className="text-fuchsia-300">Upload Photo</strong> to use any real garment picture immediately!
+        </p>
 
         {/* Supported Retailer Pills */}
         <div className="pt-2">
@@ -399,8 +412,16 @@ export const ProductUrlImportPage: React.FC = () => {
               <img
                 src={selectedImage}
                 alt={extracted.title}
-                className="max-h-64 max-w-full object-contain drop-shadow-xl"
+                className="max-h-56 max-w-full object-contain drop-shadow-2xl"
               />
+              <button
+                type="button"
+                onClick={() => fallbackUploadRef.current?.click()}
+                className="mt-3 flex items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/[0.08] transition shadow-sm"
+              >
+                <UploadCloud className="h-3.5 w-3.5 text-fuchsia-400" />
+                <span>Upload Custom Garment Photo</span>
+              </button>
             </div>
 
             {/* Product details & Available Images */}

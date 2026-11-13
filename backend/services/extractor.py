@@ -403,10 +403,17 @@ async def extract_product_from_url(url: str) -> UrlExtractResponse:
     # Deduplicate preserving order
     clean_images = list(dict.fromkeys(images))
 
-    if not clean_images:
-        clean_images = ["/garments/shirt.svg"]
-
     category = infer_category(title + " " + (description or ""))
+
+    if not clean_images:
+        if category in ("kurti", "dress"):
+            clean_images = ["/garments/kurta.png"]
+        elif category == "jacket":
+            clean_images = ["/garments/jacket.png"]
+        elif category == "shirt":
+            clean_images = ["/garments/shirt.png"]
+        else:
+            clean_images = ["/garments/tee.png"]
     retailer = hostname.replace("www.", "").split(".")[0].capitalize()
 
     return UrlExtractResponse(

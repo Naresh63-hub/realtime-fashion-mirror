@@ -36,7 +36,7 @@ export const GarmentPanel: React.FC<Props> = ({
         </span>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {GARMENT_CATALOG.map((entry) => (
           <button
             key={entry.id}
@@ -45,19 +45,18 @@ export const GarmentPanel: React.FC<Props> = ({
             aria-pressed={currentGarmentId === entry.id}
             aria-label={t('a11y.try_on_product', { name: entry.name })}
             onClick={() => onSelect(entry.url, entry.name, entry.id)}
-            className={`group relative overflow-hidden rounded-xl border p-2 text-left transition duration-200 outline-none ${
+            className={`group relative overflow-hidden rounded-xl border p-2.5 text-left transition duration-200 outline-none ${
               currentGarmentId === entry.id
                 ? 'border-indigo-500 bg-indigo-600/20 ring-2 ring-indigo-500/40 shadow-lg shadow-indigo-950/50'
-                : 'border-white/[0.08] bg-[#07080d]/60 hover:border-indigo-400/50 hover:bg-white/[0.04]'
+                : 'border-white/[0.08] bg-[#07080d]/80 hover:border-indigo-400/50 hover:bg-white/[0.04]'
             } disabled:opacity-40`}
           >
-            <div
-              className={`mb-2 flex h-20 items-center justify-center rounded-lg bg-gradient-to-br ${entry.swatch} p-2 transition-transform duration-200 group-hover:scale-105`}
-            >
+            <div className="mb-2 flex h-24 items-center justify-center rounded-lg bg-gradient-to-b from-white/[0.03] to-black/70 border border-white/[0.04] p-2 transition-transform duration-200 group-hover:scale-105 relative overflow-hidden shadow-inner">
+              <div className={`absolute -bottom-6 -right-6 w-16 h-16 rounded-full bg-gradient-to-br ${entry.swatch} opacity-20 blur-xl pointer-events-none`} />
               <img
                 src={entry.url}
                 alt={entry.name}
-                className="max-h-16 max-w-full object-contain drop-shadow-md"
+                className="max-h-20 max-w-full object-contain drop-shadow-2xl"
                 loading="lazy"
               />
             </div>
