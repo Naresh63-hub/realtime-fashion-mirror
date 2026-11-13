@@ -4,16 +4,18 @@ import {
   Sparkles,
   Trash2,
   RefreshCw,
-  ArrowRight,
   ShieldCheck,
   Shirt,
   X,
   Zap,
   Cpu,
-  AlertCircle,
   Info,
   Link2,
   Camera,
+  Layers,
+  ArrowRight,
+  SlidersHorizontal,
+  CheckCircle2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
@@ -260,32 +262,70 @@ export const PhotoUploadPage: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-600/20 text-purple-400 border border-purple-500/30">
-            <Sparkles className="h-4 w-4" />
+    <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-8 animate-fade-in">
+      {/* Background ambient lighting */}
+      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-fuchsia-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Header section */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/[0.08] pb-6">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="aura-pill bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+              <Sparkles className="h-3 w-3" />
+              <span>STUDIO ATELIER</span>
+            </span>
+            <span className="aura-pill bg-white/[0.04] text-slate-400 border border-white/[0.08]">
+              PHOTO SYNTHESIS
+            </span>
           </div>
-          <span>Personal Photo Virtual Try-On</span>
-        </h1>
-        <p className="text-xs sm:text-sm text-gray-400 mt-1">
-          Upload a clear photograph of yourself to simulate how clothing drapes on your body.
-        </p>
+          <h1 className="font-display font-extrabold text-3xl sm:text-4xl text-white tracking-tight">
+            Photo Virtual Try-On
+          </h1>
+          <p className="text-sm text-slate-400 mt-1 max-w-xl">
+            Upload your portrait or full-body photograph to simulate tailored drape, fabric folds, and lighting with neural precision.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigate('gallery')}
+            className="aura-pill hover:bg-white/10 text-slate-300 transition"
+          >
+            <Shirt className="h-3.5 w-3.5 text-indigo-400" />
+            <span>Open Wardrobe</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('live')}
+            className="aura-pill hover:bg-white/10 text-slate-300 transition"
+          >
+            <Camera className="h-3.5 w-3.5 text-fuchsia-400" />
+            <span>Live AR Mirror</span>
+          </button>
+        </div>
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-red-500/40 bg-red-950/40 p-4 text-xs sm:text-sm text-red-300 flex items-center justify-between backdrop-blur-md">
-          <span>{error}</span>
-          <button type="button" onClick={() => setError(null)} className="text-red-400 hover:text-white">
+        <div className="rounded-2xl border border-rose-500/30 bg-rose-950/30 p-4 text-xs sm:text-sm text-rose-300 flex items-center justify-between backdrop-blur-xl shadow-lg">
+          <div className="flex items-center gap-2.5">
+            <div className="h-2 w-2 rounded-full bg-rose-400 animate-pulse" />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="p-1 rounded-lg text-rose-400 hover:text-white hover:bg-rose-900/40 transition"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Photo Upload / Preview (7 cols) */}
-        <div className="lg:col-span-7 space-y-4">
+        {/* Left Column: Photo Upload / Viewer (7 cols) */}
+        <div className="lg:col-span-7 space-y-5">
           <input
             ref={fileInputRef}
             type="file"
@@ -302,47 +342,79 @@ export const PhotoUploadPage: React.FC = () => {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onClick={() => fileInputRef.current?.click()}
-              className={`flex flex-col items-center justify-center rounded-3xl border-2 border-dashed p-10 text-center cursor-pointer transition duration-300 backdrop-blur-xl ${
+              className={`relative group rounded-3xl border-2 border-dashed p-10 sm:p-14 text-center cursor-pointer transition-all duration-300 backdrop-blur-2xl overflow-hidden ${
                 dragActive
-                  ? 'border-violet-400 bg-violet-950/30 shadow-2xl shadow-violet-900/50 scale-[1.01]'
-                  : 'border-white/15 bg-gray-900/50 hover:border-violet-500/60 hover:bg-gray-900/80 shadow-xl'
+                  ? 'border-indigo-400 bg-indigo-950/30 shadow-2xl shadow-indigo-950/60 scale-[1.01]'
+                  : 'border-white/15 bg-[#0d0f18]/80 hover:border-indigo-500/50 hover:bg-[#111422]/90 shadow-2xl shadow-black/40'
               }`}
             >
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-violet-600/30 to-fuchsia-600/20 text-violet-400 mb-4 border border-violet-500/30 shadow-md">
-                <UploadCloud className="h-8 w-8" />
-              </div>
-              <h3 className="text-base font-bold text-white mb-1">Upload Your Photograph</h3>
-              <p className="text-xs text-gray-400 max-w-sm mb-5">
-                Drag and drop your JPG, PNG, or WebP photo here, or click to browse files.
-              </p>
-              <button
-                type="button"
-                className="rounded-xl bg-violet-600 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-violet-600/30 hover:bg-violet-500 transition"
-              >
-                Choose Photo from Device
-              </button>
-              <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-5 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Processed on-device: Your photos stay in your browser.</span>
+              {/* Subtle radial sheen */}
+              <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/[0.03] to-transparent pointer-events-none" />
+
+              <div className="relative flex flex-col items-center">
+                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600/30 via-purple-600/20 to-fuchsia-600/20 text-indigo-400 mb-5 border border-indigo-500/30 shadow-xl group-hover:scale-105 transition-transform duration-300">
+                  <UploadCloud className="h-9 w-9 text-indigo-300" />
+                </div>
+
+                <h3 className="font-display font-bold text-lg text-white mb-2">
+                  Upload Your Photograph
+                </h3>
+                <p className="text-xs text-slate-400 max-w-sm mb-6 leading-relaxed">
+                  Drag and drop your high-resolution portrait or full-body photo (JPG, PNG, WebP up to 10MB).
+                </p>
+
+                <div className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-6 py-3 text-xs font-bold text-white shadow-lg shadow-indigo-600/25 group-hover:shadow-indigo-600/40 transition">
+                  <span>Browse From Computer</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </div>
+
+                <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-6 bg-white/[0.04] px-3.5 py-1.5 rounded-full border border-white/[0.08]">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Encrypted & Private: Your photograph remains strictly confidential</span>
+                </div>
               </div>
             </div>
           ) : (
-            <div className="relative rounded-3xl border border-white/10 bg-gray-900/70 p-4 space-y-4 backdrop-blur-xl shadow-2xl">
-              <div className="relative aspect-[3/4] w-full max-h-[500px] overflow-hidden rounded-2xl bg-black flex items-center justify-center border border-white/5">
+            <div className="aura-panel p-5 space-y-4 shadow-2xl relative overflow-hidden">
+              <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-200">
+                    Portrait Ready
+                  </span>
+                </div>
+                <span className="text-[11px] font-mono text-slate-400">
+                  High-Res Active
+                </span>
+              </div>
+
+              {/* Viewport Frame with HUD styling */}
+              <div className="relative aspect-[3/4] w-full max-h-[520px] overflow-hidden rounded-2xl bg-[#030407] flex items-center justify-center border border-white/[0.08] shadow-inner group">
                 <img
                   src={uploadedPhoto}
                   alt="Uploaded portrait for try-on"
                   className="h-full w-full object-contain"
                 />
+
+                {/* HUD Corner Reticles */}
+                <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-indigo-500/60 pointer-events-none" />
+                <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-indigo-500/60 pointer-events-none" />
+                <div className="absolute bottom-4 left-4 w-4 h-4 border-b-2 border-l-2 border-indigo-500/60 pointer-events-none" />
+                <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-indigo-500/60 pointer-events-none" />
+
+                {/* Framing preset badge */}
+                <div className="absolute top-4 right-6 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10 text-[10px] font-mono text-slate-300">
+                  MODE: {framingPreset.toUpperCase()}
+                </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between pt-1">
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
+                  className="flex items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.05] px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-white/[0.1] hover:text-white transition backdrop-blur-md"
                 >
-                  <RefreshCw className="h-3.5 w-3.5 text-violet-400" />
+                  <RefreshCw className="h-3.5 w-3.5 text-indigo-400" />
                   <span>Replace Photo</span>
                 </button>
                 <button
@@ -351,7 +423,7 @@ export const PhotoUploadPage: React.FC = () => {
                     setUploadedPhoto(null);
                     toast.info('Photo removed.');
                   }}
-                  className="flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-950/20 px-4 py-2 text-xs font-semibold text-red-400 hover:bg-red-950/40 transition"
+                  className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-950/20 px-4 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 transition"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   <span>Remove Photo</span>
@@ -362,43 +434,53 @@ export const PhotoUploadPage: React.FC = () => {
         </div>
 
         {/* Right Column: Garment Selector & Try-On Action (5 cols) */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="rounded-3xl border border-white/10 bg-gray-900/70 p-5 space-y-4 backdrop-blur-xl shadow-2xl">
-            <div className="flex items-center gap-2">
-              <Shirt className="h-4 w-4 text-violet-400" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-300">
-                Selected Garment for Try-On
-              </h3>
+        <div className="lg:col-span-5 space-y-5">
+          <div className="aura-panel p-6 space-y-5 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              <div className="flex items-center gap-2">
+                <Shirt className="h-4 w-4 text-indigo-400" />
+                <h3 className="font-mono text-xs uppercase tracking-wider font-bold text-slate-200">
+                  Target Garment
+                </h3>
+              </div>
+              <span className="text-[10px] font-mono text-slate-400">
+                1 ITEM SELECTED
+              </span>
             </div>
 
             {selectedGarment ? (
-              <div className="rounded-2xl border border-white/10 bg-black/40 p-4 space-y-3">
-                <div className={`flex h-40 items-center justify-center rounded-2xl bg-gradient-to-br ${selectedGarment.swatch} p-4 shadow-inner`}>
+              <div className="rounded-2xl border border-white/[0.08] bg-[#07080d]/80 p-4 space-y-4">
+                <div className={`relative flex h-44 items-center justify-center rounded-xl bg-gradient-to-br ${selectedGarment.swatch} p-4 shadow-inner overflow-hidden group`}>
                   <img
                     src={selectedGarment.imageUrl}
                     alt={selectedGarment.name}
-                    className="max-h-32 object-contain drop-shadow-md"
+                    className="max-h-36 object-contain drop-shadow-xl transition-transform duration-300 group-hover:scale-105"
                   />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-bold text-white">{selectedGarment.name}</h4>
-                    <p className="text-xs text-violet-400 font-semibold">{selectedGarment.brand}</p>
+                  <div className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10 text-[10px] font-mono text-slate-300 uppercase">
+                    {selectedGarment.category}
                   </div>
-                  <span className="text-sm font-bold text-gray-200">₹{selectedGarment.priceINR}</span>
                 </div>
-                <div className="flex gap-2 pt-1">
+
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="font-display font-bold text-base text-white">{selectedGarment.name}</h4>
+                    <p className="text-xs font-semibold text-indigo-400">{selectedGarment.brand}</p>
+                  </div>
+                  <span className="font-mono font-bold text-base text-white">₹{selectedGarment.priceINR.toLocaleString('en-IN')}</span>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
                   <button
                     type="button"
                     onClick={() => navigate('gallery')}
-                    className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-semibold text-gray-300 hover:bg-white/10 transition text-center"
+                    className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.04] py-2 text-xs font-semibold text-slate-300 hover:bg-white/[0.08] hover:text-white transition text-center"
                   >
-                    Browse Closet
+                    Wardrobe
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowUrlImport((v) => !v)}
-                    className="flex items-center justify-center gap-1.5 rounded-xl border border-violet-500/30 bg-violet-600/10 px-3 py-2 text-xs font-semibold text-violet-300 hover:bg-violet-600/20 transition text-center"
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-indigo-500/30 bg-indigo-600/10 px-3 py-2 text-xs font-semibold text-indigo-300 hover:bg-indigo-600/20 transition text-center"
                   >
                     <Link2 className="h-3.5 w-3.5" />
                     <span>{showUrlImport ? 'Close Link' : 'Import Link'}</span>
@@ -419,13 +501,13 @@ export const PhotoUploadPage: React.FC = () => {
 
                 {/* Multiple Extracted Images Selector */}
                 {selectedGarment.images && selectedGarment.images.length > 1 && (
-                  <div className="pt-2 border-t border-white/10">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[11px] font-semibold text-gray-300">
-                        Choose Exact Garment Image / Angle:
+                  <div className="pt-3 border-t border-white/[0.08]">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-semibold text-slate-300">
+                        Select Garment Angle / View:
                       </span>
-                      <span className="text-[10px] text-violet-400 font-mono">
-                        {selectedGarment.images.indexOf(selectedGarment.imageUrl) + 1} of {selectedGarment.images.length}
+                      <span className="text-[10px] text-indigo-400 font-mono">
+                        {selectedGarment.images.indexOf(selectedGarment.imageUrl) + 1} / {selectedGarment.images.length}
                       </span>
                     </div>
                     <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
@@ -437,12 +519,12 @@ export const PhotoUploadPage: React.FC = () => {
                             type="button"
                             onClick={() => {
                               setSelectedGarment({ ...selectedGarment, imageUrl: img });
-                              toast.info(`Selected garment image #${idx + 1}`);
+                              toast.info(`Selected view #${idx + 1}`);
                             }}
                             className={`h-14 w-14 flex-shrink-0 rounded-xl border p-1 transition ${
                               isSelected
-                                ? 'border-violet-500 bg-violet-600/30 ring-2 ring-violet-500/50 shadow-md'
-                                : 'border-white/10 bg-white/5 hover:border-violet-400/60'
+                                ? 'border-indigo-500 bg-indigo-600/20 ring-2 ring-indigo-500/40 shadow-md'
+                                : 'border-white/[0.08] bg-white/[0.03] hover:border-indigo-400/50'
                             }`}
                             title={`Select image view ${idx + 1}`}
                           >
@@ -459,8 +541,8 @@ export const PhotoUploadPage: React.FC = () => {
                 )}
 
                 {showUrlImport && (
-                  <div className="rounded-2xl border border-violet-500/30 bg-violet-950/20 p-3 space-y-2 mt-2">
-                    <p className="text-[11px] font-semibold text-violet-300">
+                  <div className="rounded-xl border border-indigo-500/30 bg-indigo-950/20 p-3 space-y-2 mt-2">
+                    <p className="text-[11px] font-semibold text-indigo-300">
                       Paste shopping product URL:
                     </p>
                     <div className="flex gap-2">
@@ -469,72 +551,50 @@ export const PhotoUploadPage: React.FC = () => {
                         placeholder="https://www.zara.com/... or Myntra, Amazon"
                         value={importUrlInput}
                         onChange={(e) => setImportUrlInput(e.target.value)}
-                        className="flex-1 rounded-xl border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-violet-500"
+                        className="flex-1 rounded-xl border border-white/[0.1] bg-black/60 px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       />
                       <button
                         type="button"
                         onClick={handleImportUrl}
                         disabled={importingUrl}
-                        className="rounded-xl bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-500 transition disabled:opacity-50"
+                        className="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-500 transition disabled:opacity-50"
                       >
-                        {importingUrl ? 'Fetching...' : 'Extract'}
+                        {importingUrl ? 'Extracting...' : 'Extract'}
                       </button>
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center space-y-3">
-                <p className="text-xs text-gray-400">No garment selected.</p>
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 text-center space-y-3">
+                <p className="text-xs text-slate-400">No garment selected.</p>
                 <div className="flex justify-center gap-2">
                   <button
                     type="button"
                     onClick={() => navigate('gallery')}
-                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-violet-400 hover:bg-white/10 transition"
+                    className="aura-pill bg-indigo-600/10 text-indigo-300 border-indigo-500/30 hover:bg-indigo-600/20"
                   >
                     Browse Closet →
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowUrlImport((v) => !v)}
-                    className="flex items-center gap-1.5 rounded-xl border border-violet-500/30 bg-violet-600/10 px-3 py-1.5 text-xs font-semibold text-violet-300 hover:bg-violet-600/20 transition"
+                    className="aura-pill bg-white/[0.05] text-slate-300 border-white/[0.1] hover:bg-white/[0.08]"
                   >
                     <Link2 className="h-3 w-3" />
                     <span>Import Link</span>
                   </button>
                 </div>
-                {showUrlImport && (
-                  <div className="rounded-2xl border border-violet-500/30 bg-violet-950/20 p-3 space-y-2 text-left">
-                    <p className="text-[11px] font-semibold text-violet-300">
-                      Paste shopping product URL:
-                    </p>
-                    <div className="flex gap-2">
-                      <input
-                        type="url"
-                        placeholder="https://www.zara.com/... or Myntra, Amazon"
-                        value={importUrlInput}
-                        onChange={(e) => setImportUrlInput(e.target.value)}
-                        className="flex-1 rounded-xl border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-violet-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleImportUrl}
-                        disabled={importingUrl}
-                        className="rounded-xl bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-500 transition disabled:opacity-50"
-                      >
-                        {importingUrl ? 'Fetching...' : 'Extract'}
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
-            {/* Quick Garment Carousel */}
+            {/* Quick Garment Switcher */}
             <div>
-              <p className="text-xs font-semibold text-gray-400 mb-2">Switch Garment Quickly:</p>
+              <p className="font-mono text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-2">
+                Quick Wardrobe Switch:
+              </p>
               <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                {FULL_PRODUCT_CATALOG.slice(0, 5).map((prod) => (
+                {FULL_PRODUCT_CATALOG.slice(0, 6).map((prod) => (
                   <button
                     key={prod.id}
                     type="button"
@@ -542,10 +602,10 @@ export const PhotoUploadPage: React.FC = () => {
                       setSelectedGarment(prod);
                       toast.info(`Selected ${prod.name}`);
                     }}
-                    className={`flex-shrink-0 w-16 h-16 rounded-2xl border p-1 transition ${
+                    className={`flex-shrink-0 w-14 h-14 rounded-xl border p-1 transition ${
                       selectedGarment?.id === prod.id
-                        ? 'border-violet-500 bg-violet-600/25 ring-2 ring-violet-500/40'
-                        : 'border-white/10 bg-white/5 hover:border-violet-400'
+                        ? 'border-indigo-500 bg-indigo-600/25 ring-2 ring-indigo-500/40 shadow-md'
+                        : 'border-white/[0.08] bg-white/[0.03] hover:border-indigo-400/50'
                     }`}
                   >
                     <img src={prod.imageUrl} alt={prod.name} className="h-full w-full object-contain" />
@@ -555,65 +615,67 @@ export const PhotoUploadPage: React.FC = () => {
             </div>
 
             {/* Try-On Technology / Engine Selection */}
-            <div className="space-y-2 pt-2 border-t border-white/10">
+            <div className="space-y-3 pt-3 border-t border-white/[0.08]">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-semibold text-gray-300">Try-On Engine Technology:</label>
+                <label className="font-mono text-[11px] uppercase tracking-wider font-semibold text-slate-300">
+                  Fitting Engine Mode:
+                </label>
                 {backendConfig && (
                   <span
-                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full ${
                       backendConfig.configured
                         ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                         : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                     }`}
                   >
-                    {backendConfig.configured ? 'AI Ready' : 'AI Unconfigured'}
+                    {backendConfig.configured ? 'AI READY' : 'AI UNCONFIGURED'}
                   </span>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <button
                   type="button"
                   onClick={() => setEngineMode('client-high-res')}
-                  className={`flex flex-col text-left p-3 rounded-2xl border transition ${
+                  className={`flex flex-col text-left p-3.5 rounded-xl border transition ${
                     engineMode === 'client-high-res'
-                      ? 'border-violet-500 bg-violet-600/20 text-white shadow-md ring-1 ring-violet-500/30'
-                      : 'border-white/10 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                      ? 'border-indigo-500 bg-indigo-600/15 text-white shadow-md ring-1 ring-indigo-500/30'
+                      : 'border-white/[0.08] bg-white/[0.03] text-slate-400 hover:text-white hover:bg-white/[0.06]'
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 font-bold text-xs text-violet-300">
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-indigo-300">
                     <Zap className="h-3.5 w-3.5 text-amber-400" />
                     <span>Instant Canvas</span>
                   </div>
-                  <span className="text-[10px] text-gray-400 mt-1">
-                    ⚡ Local on-device · 0s latency · Interactive fit studio
+                  <span className="text-[10px] text-slate-400 mt-1">
+                    ⚡ 0ms latency · On-device drape · Interactive fit studio
                   </span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setEngineMode('cloud-genai')}
-                  className={`flex flex-col text-left p-3 rounded-2xl border transition ${
+                  className={`flex flex-col text-left p-3.5 rounded-xl border transition ${
                     engineMode === 'cloud-genai'
-                      ? 'border-purple-500 bg-purple-600/20 text-white shadow-md ring-1 ring-purple-500/30'
-                      : 'border-white/10 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                      ? 'border-fuchsia-500 bg-fuchsia-600/15 text-white shadow-md ring-1 ring-fuchsia-500/30'
+                      : 'border-white/[0.08] bg-white/[0.03] text-slate-400 hover:text-white hover:bg-white/[0.06]'
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 font-bold text-xs text-purple-300">
-                    <Cpu className="h-3.5 w-3.5 text-purple-400" />
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-fuchsia-300">
+                    <Cpu className="h-3.5 w-3.5 text-fuchsia-400" />
                     <span>AI Diffusion</span>
                   </div>
-                  <span className="text-[10px] text-gray-400 mt-1">
-                    ✨ IDM-VTON model · Photoreal cloth drape & shadows
+                  <span className="text-[10px] text-slate-400 mt-1">
+                    ✨ IDM-VTON diffusion · Photoreal drape & fabric shadows
                   </span>
                 </button>
               </div>
 
               {engineMode === 'cloud-genai' && (
-                <div className="flex items-start gap-2 rounded-xl border border-violet-500/20 bg-violet-950/20 p-2.5 text-[11px] text-violet-300">
-                  <ShieldCheck className="h-4 w-4 flex-shrink-0 text-violet-400 mt-0.5" />
+                <div className="flex items-start gap-2 rounded-xl border border-indigo-500/20 bg-indigo-950/20 p-2.5 text-[11px] text-indigo-300">
+                  <ShieldCheck className="h-4 w-4 flex-shrink-0 text-indigo-400 mt-0.5" />
                   <span>
-                    Privacy notice: In AI Diffusion mode, your selected photo and garment image are transmitted securely to the inference provider to generate the try-on result. Frames and photos are not stored permanently.
+                    Privacy notice: In AI Diffusion mode, your photo and garment image are transmitted securely to the inference provider. Photos are not permanently stored.
                   </span>
                 </div>
               )}
@@ -629,22 +691,24 @@ export const PhotoUploadPage: React.FC = () => {
             </div>
 
             {/* Framing Mode Selection */}
-            <div className="space-y-1.5 pt-1">
-              <label className="text-[11px] font-semibold text-gray-300">Photo Framing Mode:</label>
-              <div className="grid grid-cols-3 gap-1.5">
+            <div className="space-y-2 pt-2">
+              <label className="font-mono text-[11px] uppercase tracking-wider font-semibold text-slate-300">
+                Framing Perspective:
+              </label>
+              <div className="grid grid-cols-3 gap-2">
                 {[
                   { id: 'auto', label: 'Auto Detect' },
-                  { id: 'portrait', label: 'Portrait / Bust' },
+                  { id: 'portrait', label: 'Bust / Torso' },
                   { id: 'full-body', label: 'Full Body' },
                 ].map((mode) => (
                   <button
                     key={mode.id}
                     type="button"
                     onClick={() => setFramingPreset(mode.id as any)}
-                    className={`py-1.5 text-[11px] font-semibold rounded-xl border transition ${
+                    className={`py-2 text-[11px] font-mono font-semibold rounded-xl border transition ${
                       framingPreset === mode.id
-                        ? 'border-violet-500 bg-violet-600/30 text-white shadow-sm'
-                        : 'border-white/10 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                        ? 'border-indigo-500 bg-indigo-600/25 text-white shadow-sm'
+                        : 'border-white/[0.08] bg-white/[0.03] text-slate-400 hover:text-white hover:bg-white/[0.06]'
                     }`}
                   >
                     {mode.label}
@@ -654,12 +718,12 @@ export const PhotoUploadPage: React.FC = () => {
             </div>
 
             {/* Process Action Button */}
-            <div className="pt-1">
+            <div className="pt-2">
               {processing ? (
-                <div className="rounded-2xl border border-violet-500/30 bg-violet-950/40 p-5 text-center space-y-3 backdrop-blur-md">
-                  <Spinner label={progressMsg || 'Processing Virtual Try-On...'} />
-                  <p className="text-[11px] text-gray-400">
-                    Performing on-device geometric anchor alignment and realistic shadow blend.
+                <div className="rounded-2xl border border-indigo-500/30 bg-indigo-950/40 p-5 text-center space-y-3 backdrop-blur-md">
+                  <Spinner label={progressMsg || 'Synthesizing Virtual Try-On...'} />
+                  <p className="text-[11px] text-slate-400">
+                    Applying bilateral anchor warp, geometric fitting, and seamless light blending.
                   </p>
                 </div>
               ) : (
@@ -667,10 +731,12 @@ export const PhotoUploadPage: React.FC = () => {
                   type="button"
                   onClick={handleRunTryOn}
                   disabled={!uploadedPhoto}
-                  className="flex items-center justify-center gap-2 w-full rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 py-4 text-sm font-bold text-white shadow-lg shadow-violet-700/40 hover:opacity-95 disabled:opacity-40 disabled:cursor-not-allowed transition transform active:scale-[0.99]"
+                  className="relative group w-full overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 p-[1px] shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/50 disabled:opacity-40 disabled:cursor-not-allowed transition duration-300 active:scale-[0.99]"
                 >
-                  <Sparkles className="h-4 w-4" />
-                  <span>Generate Virtual Try-On</span>
+                  <div className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 py-3.5 px-4 text-sm font-bold text-white">
+                    <Sparkles className="h-4 w-4" />
+                    <span>GENERATE VIRTUAL TRY-ON</span>
+                  </div>
                 </button>
               )}
             </div>

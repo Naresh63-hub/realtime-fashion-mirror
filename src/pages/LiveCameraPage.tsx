@@ -15,6 +15,7 @@ import {
   ArrowRight,
   ShieldCheck,
   AlertCircle,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useVirtualTryOn } from '../hooks/useVirtualTryOn';
@@ -340,40 +341,52 @@ export const LiveCameraPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
+    <div className="relative mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 animate-fade-in">
+      {/* Background ambient lighting */}
+      <div className="absolute top-1/4 left-1/3 -translate-x-1/2 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-fuchsia-500/10 rounded-full blur-3xl pointer-events-none" />
+
       {/* Top action header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/[0.08] pb-5">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-600/20 text-violet-400 border border-violet-500/30">
-              <Camera className="h-4 w-4" />
-            </div>
-            <span>Live Camera Try-On</span>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="aura-pill bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20">
+              <Camera className="h-3 w-3" />
+              <span>LIVE AR MIRROR</span>
+            </span>
+            <span className="aura-pill bg-white/[0.04] text-slate-400 border border-white/[0.08]">
+              33-POINT SKELETAL FIT
+            </span>
+          </div>
+          <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-white tracking-tight">
+            Real-Time Virtual Fitting Studio
           </h1>
-          <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
-            Real-time 33-point MediaPipe body tracking with dynamic torso anchoring and arm sleeves.
+          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xl">
+            Live on-device body pose tracking with dynamic shoulder anchoring, chest contouring, and zero network latency.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
+          <button
+            type="button"
             onClick={toggleDebug}
             title={t('controls.debug_title')}
-            ariaLabel={t('controls.debug_title')}
-            className="flex items-center gap-1.5 text-xs rounded-xl border border-white/10 bg-white/5"
+            aria-label={t('controls.debug_title')}
+            className={`aura-pill transition ${
+              debugMode ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/40' : 'text-slate-400 hover:text-white'
+            }`}
           >
             <Sliders className="h-3.5 w-3.5" />
             <span>{debugMode ? 'Debug: ON' : 'Debug: OFF'}</span>
-          </Button>
+          </button>
 
           <button
             type="button"
             onClick={() => navigate('photo-upload')}
-            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/10 transition backdrop-blur-md"
+            className="aura-pill hover:bg-white/10 text-slate-300 transition"
           >
-            <Sparkles className="h-3.5 w-3.5 text-violet-400" />
-            <span>Switch to Photo Try-On</span>
+            <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+            <span>Photo Fit Mode</span>
           </button>
         </div>
       </div>
@@ -381,7 +394,7 @@ export const LiveCameraPage: React.FC = () => {
       {(error || initializing) && (
         <div className="space-y-3">
           {initializing && !error && (
-            <div className="rounded-2xl border border-white/10 bg-gray-900/60 p-4 backdrop-blur-md">
+            <div className="aura-panel p-5">
               <Spinner label={t('camera.loading_models')} />
             </div>
           )}
@@ -389,31 +402,31 @@ export const LiveCameraPage: React.FC = () => {
         </div>
       )}
 
-      {/* Technology Mode Banner: Honest & Transparent */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-gray-900/50 px-4 py-2.5 backdrop-blur-md">
-        <div className="flex items-center gap-2 flex-wrap">
+      {/* Technology Mode Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-[#0d0f18]/90 px-4 py-3 backdrop-blur-xl shadow-lg">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-bold text-gray-200">
-            Live Stream: Instant Canvas Tracker (2D Mesh Affine Warp · 30–60 FPS On-Device)
+          <span className="text-xs font-semibold text-slate-200">
+            Real-Time Engine: Instant Canvas Tracker (2D Mesh Affine Warp · 30–60 FPS On-Device)
           </span>
-          <span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
-            Zero Latency
+          <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-mono text-emerald-400">
+            0ms Latency
           </span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-400">
+        <div className="flex items-center gap-2 text-xs text-slate-400">
           <Sparkles className="h-3.5 w-3.5 text-amber-400" />
           <span>
-            Generative AI: <strong>IDM-VTON Diffusion</strong> via <em>AI Live Preview</em> or <em>Capture Photo</em>
+            Generative AI: <strong className="text-slate-200 font-semibold">IDM-VTON Diffusion</strong> via <em>AI Live Keyframe</em> or <em>Capture</em>
           </span>
         </div>
       </div>
 
       <div className="grid flex-1 grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Camera stage column */}
+        {/* Camera stage column (2 cols) */}
         <section className="lg:col-span-2 flex flex-col gap-4">
           <div
             ref={stageRef}
-            className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-white/10 bg-black sm:aspect-video shadow-2xl"
+            className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-white/[0.08] bg-[#030407] sm:aspect-video shadow-2xl"
           >
             <canvas
               ref={canvasRef}
@@ -424,23 +437,33 @@ export const LiveCameraPage: React.FC = () => {
 
             {/* Overlays */}
             <div className="pointer-events-none absolute inset-0">
-              <div className="absolute left-3 top-3 flex items-center gap-2">
+              <div className="absolute left-4 top-4 flex items-center gap-2">
                 {cameraActive && <TrackingPill status={tracking} />}
               </div>
 
+              {/* Viewport HUD Corner Reticles */}
+              {cameraActive && (
+                <>
+                  <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-indigo-500/50 pointer-events-none" />
+                  <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-indigo-500/50 pointer-events-none" />
+                  <div className="absolute bottom-4 left-4 w-4 h-4 border-b-2 border-l-2 border-indigo-500/50 pointer-events-none" />
+                  <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-indigo-500/50 pointer-events-none" />
+                </>
+              )}
+
               {/* Viewport Technology Indicator Badges */}
-              <div className="absolute right-3 top-3 flex flex-col items-end gap-1.5">
-                <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-gray-950/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-300 shadow-md backdrop-blur-md">
+              <div className="absolute right-4 top-4 flex flex-col items-end gap-1.5">
+                <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-black/70 px-2.5 py-1 text-[11px] font-mono font-semibold text-emerald-300 shadow-md backdrop-blur-md">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Instant Canvas Tracker (30 FPS)</span>
+                  <span>LOCAL 30 FPS TRACKER</span>
                 </div>
                 {aiLiveEnabled && (
-                  <div className="flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-gray-950/85 px-2.5 py-1 text-[11px] font-semibold text-amber-300 shadow-md backdrop-blur-md">
+                  <div className="flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-black/80 px-2.5 py-1 text-[11px] font-mono font-semibold text-amber-300 shadow-md backdrop-blur-md">
                     <Sparkles className={`h-3 w-3 text-amber-400 ${aiLiveProcessing ? 'animate-spin' : ''}`} />
                     <span>
                       {aiLiveProcessing
-                        ? `AI Synthesizing (${aiLiveProgress}%)...`
-                        : 'AI Keyframe Active'}
+                        ? `AI SYNTHESIZING (${aiLiveProgress}%)...`
+                        : 'AI KEYFRAME ACTIVE'}
                     </span>
                   </div>
                 )}
@@ -464,28 +487,29 @@ export const LiveCameraPage: React.FC = () => {
 
             {/* Empty / Not Started state */}
             {!cameraActive && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gray-950/80 p-6 text-center backdrop-blur-md">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-[#07080d]/90 p-6 text-center backdrop-blur-xl">
                 {initializing ? (
                   <Spinner label={t('camera.loading_engine')} />
                 ) : (
                   <>
-                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-violet-600/20 text-violet-400 border border-violet-500/30 shadow-lg shadow-violet-900/40">
-                      <Camera className="h-8 w-8" />
+                    <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-indigo-600/30 to-fuchsia-600/30 text-indigo-400 border border-indigo-500/30 shadow-2xl shadow-indigo-950/80">
+                      <Camera className="h-9 w-9 text-indigo-300" />
                     </div>
                     <div>
-                      <p className="font-bold text-white text-base">{t('camera.off_title')}</p>
-                      <p className="mt-1 text-sm text-gray-400 max-w-sm">{t('camera.off_body')}</p>
+                      <p className="font-display font-bold text-white text-lg">{t('camera.off_title')}</p>
+                      <p className="mt-1 text-xs text-slate-400 max-w-sm leading-relaxed">{t('camera.off_body')}</p>
                     </div>
-                    <Button
+                    <button
+                      type="button"
                       onClick={() => void startCamera()}
                       disabled={!engineReady}
-                      ariaLabel={t('a11y.start_camera')}
-                      className="rounded-xl px-6 py-3 font-semibold shadow-lg shadow-violet-600/30"
+                      aria-label={t('a11y.start_camera')}
+                      className="rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-7 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/30 hover:opacity-95 transition disabled:opacity-40"
                     >
                       {t('controls.start_camera')}
-                    </Button>
+                    </button>
                     {!engineReady && !initializing && (
-                      <p className="text-xs text-red-400">{t('camera.engine_failed')}</p>
+                      <p className="text-xs text-rose-400">{t('camera.engine_failed')}</p>
                     )}
                   </>
                 )}
@@ -500,25 +524,27 @@ export const LiveCameraPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleStopCamera}
-                  className="flex items-center gap-1.5 rounded-xl bg-red-600/90 px-4 py-2 text-xs font-semibold text-white hover:bg-red-600 transition shadow-md shadow-red-900/30"
+                  className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-950/30 px-4 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-950/60 transition shadow-md"
                 >
                   <VideoOff className="h-3.5 w-3.5" />
                   <span>{t('controls.stop_camera')}</span>
                 </button>
+
                 <button
                   type="button"
                   onClick={handleSwitchCamera}
-                  className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
+                  className="flex items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-white/[0.08] transition backdrop-blur-md"
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <RefreshCw className="h-3.5 w-3.5 text-indigo-400" />
                   <span>{t('controls.switch_camera')}</span>
                 </button>
+
                 {availableCameras.length > 1 && (
                   <select
                     aria-label="Select Camera Device"
                     value={selectedCameraId || ''}
                     onChange={(e) => void switchCameraDevice(e.target.value)}
-                    className="rounded-xl border border-white/10 bg-gray-900/90 px-3 py-2 text-xs font-semibold text-gray-200 focus:outline-none focus:ring-1 focus:ring-violet-500 backdrop-blur-md"
+                    className="rounded-xl border border-white/[0.1] bg-[#0d0f18] px-3 py-2 text-xs font-semibold text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 backdrop-blur-md"
                   >
                     {availableCameras.map((cam, idx) => (
                       <option key={cam.deviceId || idx} value={cam.deviceId}>
@@ -527,10 +553,11 @@ export const LiveCameraPage: React.FC = () => {
                     ))}
                   </select>
                 )}
+
                 <button
                   type="button"
                   onClick={handleCapture}
-                  className="flex items-center gap-1.5 rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-500 transition shadow-md shadow-violet-600/30"
+                  className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-indigo-600/25 hover:opacity-95 transition"
                 >
                   <Camera className="h-3.5 w-3.5" />
                   <span>{t('controls.capture_photo')}</span>
@@ -542,13 +569,13 @@ export const LiveCameraPage: React.FC = () => {
                   onClick={toggleAiLivePreview}
                   className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition backdrop-blur-md shadow-md ${
                     aiLiveEnabled
-                      ? 'border-amber-500/50 bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 shadow-amber-900/30'
-                      : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                      ? 'border-amber-500/50 bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 shadow-amber-950/40'
+                      : 'border-white/[0.1] bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]'
                   }`}
                   title="Toggle periodic AI generative diffusion frame sampling"
                 >
-                  <Sparkles className={`h-3.5 w-3.5 ${aiLiveEnabled ? 'text-amber-400' : 'text-gray-400'}`} />
-                  <span>{aiLiveEnabled ? 'AI Live Preview: ON' : 'AI Live Preview: OFF'}</span>
+                  <Sparkles className={`h-3.5 w-3.5 ${aiLiveEnabled ? 'text-amber-400' : 'text-slate-400'}`} />
+                  <span>{aiLiveEnabled ? 'AI Live Keyframe: ON' : 'AI Live Keyframe: OFF'}</span>
                 </button>
 
                 {/* On-Demand Sample Button */}
@@ -567,26 +594,32 @@ export const LiveCameraPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={toggleFullscreen}
-                  className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-300 hover:bg-white/10 transition backdrop-blur-md"
+                  className="flex items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/[0.08] transition backdrop-blur-md ml-auto"
                   title={t('controls.fullscreen_title')}
                 >
                   <Maximize2 className="h-3.5 w-3.5" />
                 </button>
               </>
             ) : (
-              <Button onClick={() => void startCamera()} disabled={!engineReady} ariaLabel={t('a11y.start_camera')}>
+              <button
+                type="button"
+                onClick={() => void startCamera()}
+                disabled={!engineReady}
+                aria-label={t('a11y.start_camera')}
+                className="rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-600/25 hover:opacity-95 transition disabled:opacity-40"
+              >
                 {t('controls.start_camera')}
-              </Button>
+              </button>
             )}
 
             {garment && (
-              <div className="ml-auto flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-300 backdrop-blur-md">
-                <span>Wearing:</span>
-                <span className="font-semibold text-violet-300">{garment.name}</span>
+              <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-slate-300 backdrop-blur-md">
+                <span className="text-slate-400">Wearing:</span>
+                <span className="font-semibold text-indigo-300">{garment.name}</span>
                 <button
                   type="button"
                   onClick={removeGarment}
-                  className="text-gray-400 hover:text-white ml-1"
+                  className="text-slate-400 hover:text-white ml-1"
                   title="Remove Garment"
                 >
                   <X className="h-3 w-3" />
@@ -597,8 +630,8 @@ export const LiveCameraPage: React.FC = () => {
 
           {/* AI Live Keyframe Synthesis Card */}
           {(aiLiveEnabled || aiLiveResultUrl) && (
-            <div className="rounded-3xl border border-amber-500/30 bg-gradient-to-br from-gray-900/90 to-gray-950/90 p-5 shadow-2xl backdrop-blur-md">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+            <div className="rounded-3xl border border-amber-500/30 bg-[#0d0f18]/90 p-5 shadow-2xl backdrop-blur-xl">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
                     <Sparkles className="h-4 w-4" />
@@ -606,21 +639,21 @@ export const LiveCameraPage: React.FC = () => {
                   <div>
                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
                       <span>AI Diffusion Live Keyframe</span>
-                      <span className="rounded-md bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
-                        IDM-VTON Neural Synthesis
+                      <span className="rounded-full bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-[10px] font-mono text-amber-300">
+                        IDM-VTON NEURAL
                       </span>
                     </h3>
-                    <p className="text-[11px] text-gray-400 mt-0.5">
+                    <p className="text-[11px] text-slate-400 mt-0.5">
                       Sampled asynchronously from live video without affecting 30 FPS camera performance.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <span className="rounded-md bg-white/5 px-2 py-1 text-[11px]">
-                    Sampled: <strong className="text-gray-200">{aiLiveSampledCount}</strong>
+                <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
+                  <span className="rounded-md bg-white/[0.04] px-2 py-1 text-[11px] border border-white/[0.08]">
+                    Sampled: <strong className="text-white">{aiLiveSampledCount}</strong>
                   </span>
-                  <span className="rounded-md bg-white/5 px-2 py-1 text-[11px]">
+                  <span className="rounded-md bg-white/[0.04] px-2 py-1 text-[11px] border border-white/[0.08]">
                     Dropped: <strong className="text-amber-300">{aiLiveDroppedCount}</strong>
                   </span>
                 </div>
@@ -631,12 +664,12 @@ export const LiveCameraPage: React.FC = () => {
                 {aiLiveConfigured === false ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-950/20 p-4">
                     <AlertCircle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
-                    <div className="text-xs text-gray-300 space-y-1">
+                    <div className="text-xs text-slate-300 space-y-1">
                       <p className="font-semibold text-amber-200">Cloud Generative AI Unconfigured</p>
                       <p>
                         Set <code className="bg-black/50 px-1 py-0.5 rounded text-amber-300">VTON_API_KEY</code> in the backend <code className="bg-black/50 px-1 py-0.5 rounded text-amber-300">.env</code> to connect real IDM-VTON diffusion inference.
                       </p>
-                      <p className="text-gray-400">
+                      <p className="text-slate-400">
                         The live camera operates seamlessly via local 30 FPS Canvas 2D geometric tracking with 0 network latency.
                       </p>
                     </div>
@@ -644,20 +677,20 @@ export const LiveCameraPage: React.FC = () => {
                 ) : aiLiveProcessing && !aiLiveResultUrl ? (
                   <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
                     <Spinner label={`Synthesizing AI diffusion keyframe (${aiLiveProgress}%)...`} />
-                    <p className="text-xs text-gray-400 max-w-sm">
+                    <p className="text-xs text-slate-400 max-w-sm">
                       Running generative neural fabric synthesis. In-flight frames are dropped cleanly to ensure live camera tracking never stutters.
                     </p>
                   </div>
                 ) : aiLiveResultUrl ? (
                   <div className="flex flex-col sm:flex-row items-center gap-5">
-                    <div className="relative aspect-[3/4] w-48 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black shadow-lg">
+                    <div className="relative aspect-[3/4] w-48 shrink-0 overflow-hidden rounded-2xl border border-white/[0.08] bg-black shadow-lg">
                       <img
                         src={aiLiveResultUrl}
                         alt="AI Diffusion Synthesized Try-On"
                         className="h-full w-full object-cover"
                       />
-                      <div className="absolute bottom-2 left-2 right-2 rounded-lg bg-black/70 px-2 py-1 text-[10px] font-semibold text-emerald-300 text-center backdrop-blur-md">
-                        ✨ AI Synthesized
+                      <div className="absolute bottom-2 left-2 right-2 rounded-lg bg-black/70 px-2 py-1 text-[10px] font-mono font-semibold text-emerald-300 text-center backdrop-blur-md">
+                        ✨ AI SYNTHESIZED
                       </div>
                     </div>
 
@@ -665,11 +698,11 @@ export const LiveCameraPage: React.FC = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                          <span className="text-xs font-bold text-gray-200">
+                          <span className="text-xs font-bold text-slate-200">
                             Photorealistic Fabric Drape & Lighting Synthesized
                           </span>
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-slate-400 mt-1">
                           {aiLiveLastSampleTime
                             ? `Last updated: ${new Date(aiLiveLastSampleTime).toLocaleTimeString()}`
                             : 'Synthesized via cloud generative diffusion.'}
@@ -678,7 +711,7 @@ export const LiveCameraPage: React.FC = () => {
 
                       {aiLiveProcessing && (
                         <div className="space-y-1">
-                          <div className="flex justify-between text-[11px] text-gray-400">
+                          <div className="flex justify-between text-[11px] text-slate-400">
                             <span>Synthesizing next keyframe...</span>
                             <span>{aiLiveProgress}%</span>
                           </div>
@@ -709,9 +742,9 @@ export const LiveCameraPage: React.FC = () => {
                             refreshSavedLooks();
                             toast.success('AI Look saved to private gallery!');
                           }}
-                          className="flex items-center gap-1.5 rounded-xl border border-violet-500/40 bg-violet-950/40 px-3 py-1.5 text-xs font-semibold text-violet-300 hover:bg-violet-950/70 transition"
+                          className="flex items-center gap-1.5 rounded-xl border border-indigo-500/30 bg-indigo-950/30 px-3 py-1.5 text-xs font-semibold text-indigo-300 hover:bg-indigo-950/60 transition"
                         >
-                          <Heart className="h-3.5 w-3.5 text-violet-400" />
+                          <Heart className="h-3.5 w-3.5 text-indigo-400" />
                           <span>Save Look</span>
                         </button>
 
@@ -725,7 +758,7 @@ export const LiveCameraPage: React.FC = () => {
                             link.click();
                             toast.success('Downloaded AI synthesized image.');
                           }}
-                          className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/10 transition"
+                          className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/[0.08] transition"
                         >
                           <Download className="h-3.5 w-3.5" />
                           <span>Download Still</span>
@@ -750,7 +783,7 @@ export const LiveCameraPage: React.FC = () => {
                             });
                             navigate('results');
                           }}
-                          className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-semibold text-black hover:bg-amber-400 transition shadow-md shadow-amber-900/30"
+                          className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-semibold text-black hover:bg-amber-400 transition shadow-md shadow-amber-950/40"
                         >
                           <span>Open in Fit Studio</span>
                           <ArrowRight className="h-3.5 w-3.5" />
@@ -759,7 +792,7 @@ export const LiveCameraPage: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between text-xs text-gray-400 py-3">
+                  <div className="flex items-center justify-between text-xs text-slate-400 py-3">
                     <span>AI Keyframe sampler is waiting for the next scheduled frame...</span>
                     <button
                       type="button"
@@ -798,33 +831,35 @@ export const LiveCameraPage: React.FC = () => {
       {/* Capture preview modal */}
       {captured && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-xl animate-fade-in"
           onClick={() => setCaptured(null)}
         >
           <div
-            className="flex max-w-lg w-full flex-col gap-4 rounded-3xl border border-white/10 bg-gray-900/90 p-5 shadow-2xl backdrop-blur-2xl"
+            className="flex max-w-lg w-full flex-col gap-4 rounded-3xl border border-white/[0.08] bg-[#0d0f18]/95 p-6 shadow-2xl backdrop-blur-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-white text-base">Captured Virtual Try-On</h3>
+            <div className="flex items-center justify-between pb-2 border-b border-white/[0.08]">
+              <h3 className="font-display font-bold text-white text-base">Captured Virtual Try-On</h3>
               <button
                 type="button"
                 onClick={() => setCaptured(null)}
-                className="text-gray-400 hover:text-white"
+                className="text-slate-400 hover:text-white p-1 rounded-lg"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <img
-              src={captured}
-              alt="Screenshot of Virtual Try-On"
-              className="max-h-[60vh] rounded-2xl object-contain border border-white/10 bg-black"
-            />
+            <div className="relative aspect-[3/4] max-h-[55vh] overflow-hidden rounded-2xl border border-white/[0.08] bg-black">
+              <img
+                src={captured}
+                alt="Screenshot of Virtual Try-On"
+                className="h-full w-full object-contain"
+              />
+            </div>
             <div className="flex flex-wrap justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setCaptured(null)}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-gray-300 hover:bg-white/10 transition"
+                className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-white/[0.08] transition"
               >
                 {t('common.close')}
               </button>
@@ -832,7 +867,7 @@ export const LiveCameraPage: React.FC = () => {
                 type="button"
                 onClick={handleGeneratePhotorealStill}
                 disabled={isGeneratingPhotoreal}
-                className="flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-4 py-2 text-xs font-semibold text-amber-300 hover:from-amber-500/30 hover:to-orange-500/30 transition shadow-md shadow-amber-900/30 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-4 py-2 text-xs font-semibold text-amber-300 hover:from-amber-500/30 hover:to-orange-500/30 transition shadow-md shadow-amber-950/40 disabled:opacity-50"
               >
                 <Sparkles className="h-3.5 w-3.5 text-amber-400" />
                 <span>{isGeneratingPhotoreal ? 'Synthesizing...' : '✨ Generate Photoreal Still'}</span>
@@ -840,15 +875,15 @@ export const LiveCameraPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSaveToGallery}
-                className="flex items-center gap-1.5 rounded-xl border border-violet-500/30 bg-violet-950/40 px-4 py-2 text-xs font-semibold text-violet-300 hover:bg-violet-950/60 transition"
+                className="flex items-center gap-1.5 rounded-xl border border-indigo-500/30 bg-indigo-950/30 px-4 py-2 text-xs font-semibold text-indigo-300 hover:bg-indigo-950/60 transition"
               >
-                <Heart className="h-3.5 w-3.5 text-violet-400" />
+                <Heart className="h-3.5 w-3.5 text-indigo-400" />
                 <span>Save Look</span>
               </button>
               <button
                 type="button"
                 onClick={handleDownload}
-                className="flex items-center gap-1.5 rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-500 transition shadow-md shadow-violet-600/30"
+                className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-4 py-2 text-xs font-semibold text-white hover:opacity-95 transition shadow-md shadow-indigo-600/30"
               >
                 <Download className="h-3.5 w-3.5" />
                 <span>{t('controls.download')}</span>

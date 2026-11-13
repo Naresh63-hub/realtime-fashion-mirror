@@ -21,8 +21,8 @@ import {
   Share2,
   Zap,
   Cpu,
-  AlertCircle,
-  Info,
+  Layers,
+  Shirt,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
@@ -377,13 +377,13 @@ export const VirtualTryOnResultsPage: React.FC = () => {
   // If no try-on has been generated yet, show prompt instead of demo images
   if (!lastResult?.personImageUrl) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-20 text-center space-y-6">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-violet-600/20 text-violet-400 border border-violet-500/30 shadow-xl">
-          <Sparkles className="h-10 w-10" />
+      <div className="mx-auto max-w-4xl px-4 py-20 text-center space-y-6 animate-fade-in">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 shadow-2xl">
+          <Sparkles className="h-10 w-10 text-indigo-300" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white">No Virtual Try-On Result Yet</h2>
-          <p className="text-sm text-gray-400 max-w-md mx-auto">
+          <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-white">No Virtual Try-On Result Yet</h2>
+          <p className="text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
             Upload your personal photograph or open your live camera to see clothing dynamically drape on your body.
           </p>
         </div>
@@ -391,7 +391,7 @@ export const VirtualTryOnResultsPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('photo-upload')}
-            className="flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-violet-600/30 hover:bg-violet-500 transition"
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/30 hover:opacity-95 transition"
           >
             <UploadCloud className="h-4 w-4" />
             <span>Upload Your Photo</span>
@@ -400,17 +400,17 @@ export const VirtualTryOnResultsPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('live')}
-            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
+            className="aura-pill hover:bg-white/10 text-slate-200 px-6 py-3 text-sm transition"
           >
-            <Camera className="h-4 w-4 text-violet-400" />
+            <Camera className="h-4 w-4 text-fuchsia-400" />
             <span>Open Live Camera</span>
           </button>
           <button
             type="button"
             onClick={() => navigate('gallery')}
-            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
+            className="aura-pill hover:bg-white/10 text-slate-200 px-6 py-3 text-sm transition"
           >
-            <span>Browse Garments</span>
+            <span>Browse Wardrobe</span>
           </button>
         </div>
       </div>
@@ -418,30 +418,39 @@ export const VirtualTryOnResultsPage: React.FC = () => {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-8">
+    <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-8 animate-fade-in">
+      {/* Background ambient lighting */}
+      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-fuchsia-500/10 rounded-full blur-3xl pointer-events-none" />
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/[0.08] pb-6">
         <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/20 px-3 py-1 text-xs font-semibold text-violet-300 border border-violet-500/30">
-            <CheckCircle2 className="h-3.5 w-3.5 text-violet-400" />
-            <span>Synthesis Complete</span>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="aura-pill bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <CheckCircle2 className="h-3 w-3" />
+              <span>SYNTHESIS COMPLETE</span>
+            </span>
+            <span className="aura-pill bg-white/[0.04] text-slate-400 border border-white/[0.08]">
+              FIT STUDIO
+            </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-2 flex items-center gap-2">
-            <span>Virtual Try-On Result</span>
+          <h1 className="font-display font-extrabold text-3xl sm:text-4xl text-white tracking-tight">
+            Virtual Try-On Result
           </h1>
-          <p className="text-xs sm:text-sm text-gray-400">
-            Drape preview anchored to body proportions. Use the <strong>Adjust Fit Studio</strong> below to fine-tune garment position and size.
+          <p className="text-sm text-slate-400 mt-1 max-w-xl">
+            Review simulated cloth drape, toggle between Instant Canvas and IDM-VTON Diffusion, and use the <strong>Adjust Fit Studio</strong> to tailor dimensions.
           </p>
         </div>
 
-        {/* View toggle */}
+        {/* View toggle & Adjust Fit drawer toggle */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-gray-900/80 border border-white/10 rounded-2xl p-1 backdrop-blur-xl">
+          <div className="flex items-center gap-1 bg-[#0d0f18] border border-white/[0.08] rounded-xl p-1 backdrop-blur-xl">
             <button
               type="button"
               onClick={() => setViewMode('slider')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition ${
-                viewMode === 'slider' ? 'bg-violet-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
+                viewMode === 'slider' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
               }`}
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
@@ -450,8 +459,8 @@ export const VirtualTryOnResultsPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setViewMode('side-by-side')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition ${
-                viewMode === 'side-by-side' ? 'bg-violet-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
+                viewMode === 'side-by-side' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
               }`}
             >
               <Columns2 className="h-3.5 w-3.5" />
@@ -462,13 +471,13 @@ export const VirtualTryOnResultsPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowFitStudio(!showFitStudio)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-2xl border transition backdrop-blur-xl ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border transition backdrop-blur-xl ${
               showFitStudio
-                ? 'border-violet-500/50 bg-violet-600/30 text-violet-300 shadow-lg shadow-violet-900/40'
-                : 'border-white/15 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
+                ? 'border-indigo-500/50 bg-indigo-600/20 text-indigo-300 shadow-lg shadow-indigo-950/50'
+                : 'border-white/[0.08] bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'
             }`}
           >
-            <Wand2 className="h-3.5 w-3.5 text-violet-400" />
+            <Wand2 className="h-3.5 w-3.5 text-indigo-400" />
             <span>Adjust Fit</span>
             {showFitStudio ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
@@ -480,10 +489,10 @@ export const VirtualTryOnResultsPage: React.FC = () => {
         {/* Visual Comparison Area (8 cols) */}
         <div className="lg:col-span-8 space-y-5">
           {/* Layer Switcher & AI Synthesis Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-900/70 p-3.5 rounded-2xl border border-white/10 backdrop-blur-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0d0f18]/90 p-3.5 rounded-2xl border border-white/[0.08] backdrop-blur-xl shadow-lg">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-gray-400">Viewing Layer:</span>
-              <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10">
+              <span className="font-mono text-xs uppercase tracking-wider font-semibold text-slate-400">Viewing Layer:</span>
+              <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/[0.08]">
                 <button
                   type="button"
                   onClick={() => {
@@ -494,8 +503,8 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                   }}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
                     activeLayer === 'canvas'
-                      ? 'bg-violet-600 text-white shadow-sm'
-                      : 'text-gray-400 hover:text-white'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   <Zap className="h-3 w-3 text-amber-400" />
@@ -514,11 +523,11 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                   }}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
                     activeLayer === 'ai'
-                      ? 'bg-purple-600 text-white shadow-sm'
-                      : 'text-gray-400 hover:text-white'
+                      ? 'bg-fuchsia-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  <Cpu className="h-3 w-3 text-purple-400" />
+                  <Cpu className="h-3 w-3 text-fuchsia-400" />
                   <span>{lastResult?.aiImageUrl ? 'IDM-VTON Diffusion' : 'Generate AI Still'}</span>
                 </button>
               </div>
@@ -530,29 +539,29 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                   type="button"
                   onClick={handleGenerateCloudAI}
                   disabled={isGeneratingCloudAI}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-md shadow-purple-900/30 hover:opacity-90 transition disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white shadow-md shadow-indigo-950/40 hover:opacity-95 transition disabled:opacity-50"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
-                  <span>{isGeneratingCloudAI ? 'Synthesizing Diffusion...' : 'Generate AI Diffusion'}</span>
+                  <span>{isGeneratingCloudAI ? 'Synthesizing...' : 'Generate AI Diffusion'}</span>
                 </button>
               )}
               {backendConfig && (
                 <span
-                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                  className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full ${
                     backendConfig.configured
                       ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                       : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                   }`}
                   title={backendConfig.guidance}
                 >
-                  {backendConfig.configured ? 'AI Ready' : 'AI Unconfigured'}
+                  {backendConfig.configured ? 'AI READY' : 'AI UNCONFIGURED'}
                 </span>
               )}
             </div>
           </div>
 
           {viewMode === 'slider' ? (
-            <div className="relative aspect-[3/4] max-h-[600px] w-full overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl select-none backdrop-blur-xl">
+            <div className="relative aspect-[3/4] max-h-[620px] w-full overflow-hidden rounded-3xl border border-white/[0.08] bg-[#030407] shadow-2xl select-none backdrop-blur-xl group">
               {/* After (Generated result) - background layer */}
               <img
                 src={currentResultImg}
@@ -575,10 +584,10 @@ export const VirtualTryOnResultsPage: React.FC = () => {
 
               {/* Slider Divider Line & Thumb */}
               <div
-                className="absolute inset-y-0 w-0.5 bg-white shadow-lg pointer-events-none"
+                className="absolute inset-y-0 w-0.5 bg-white/80 shadow-2xl pointer-events-none"
                 style={{ left: `${sliderPos}%` }}
               >
-                <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-900 shadow-xl text-xs font-bold">
+                <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-950 shadow-2xl text-xs font-bold border border-white/40">
                   ↔
                 </div>
               </div>
@@ -596,81 +605,87 @@ export const VirtualTryOnResultsPage: React.FC = () => {
 
               {/* Re-rendering indicator badge */}
               {isReRendering && (
-                <div className="pointer-events-none absolute top-4 right-4 rounded-xl bg-violet-600/90 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md animate-pulse">
+                <div className="pointer-events-none absolute top-4 right-4 rounded-full bg-indigo-600/90 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md animate-pulse">
                   Updating Drape...
                 </div>
               )}
 
+              {/* HUD Reticles */}
+              <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-indigo-500/50 pointer-events-none" />
+              <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-indigo-500/50 pointer-events-none" />
+              <div className="absolute bottom-4 left-4 w-4 h-4 border-b-2 border-l-2 border-indigo-500/50 pointer-events-none" />
+              <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-indigo-500/50 pointer-events-none" />
+
               {/* Corner Badges */}
-              <div className="pointer-events-none absolute bottom-4 left-4 rounded-xl bg-black/60 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md border border-white/10">
-                Original Photo
+              <div className="pointer-events-none absolute bottom-4 left-4 rounded-xl bg-black/70 px-3 py-1 text-xs font-mono font-semibold text-slate-300 backdrop-blur-md border border-white/10">
+                ORIGINAL PHOTO
               </div>
-              <div className="pointer-events-none absolute bottom-4 right-4 rounded-xl bg-violet-600/80 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md border border-violet-400/20">
-                {activeLayer === 'ai' ? 'IDM-VTON Diffusion Still' : 'Instant Canvas Try-On'}
+              <div className="pointer-events-none absolute bottom-4 right-4 rounded-xl bg-indigo-600/80 px-3 py-1 text-xs font-mono font-semibold text-white backdrop-blur-md border border-indigo-400/30">
+                {activeLayer === 'ai' ? 'IDM-VTON DIFFUSION STILL' : 'INSTANT CANVAS DRAPE'}
               </div>
             </div>
           ) : lastResult?.aiImageUrl ? (
             /* 3-Way Side-by-Side Comparison: Original vs Canvas vs AI Diffusion */
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="rounded-3xl border border-white/10 bg-black/60 p-3 flex flex-col items-center backdrop-blur-xl">
-                <span className="text-xs text-gray-400 mb-2 font-semibold">1. Original Photo</span>
-                <img src={personImg} alt="Original" className="max-h-[460px] object-contain rounded-2xl" />
+              <div className="rounded-2xl border border-white/[0.08] bg-[#07080d]/80 p-3 flex flex-col items-center backdrop-blur-xl">
+                <span className="font-mono text-xs text-slate-400 mb-2 font-semibold">1. Original Photo</span>
+                <img src={personImg} alt="Original" className="max-h-[460px] object-contain rounded-xl" />
               </div>
-              <div className="rounded-3xl border border-violet-500/30 bg-black/60 p-3 flex flex-col items-center backdrop-blur-xl">
+              <div className="rounded-2xl border border-indigo-500/30 bg-[#07080d]/80 p-3 flex flex-col items-center backdrop-blur-xl">
                 <div className="flex items-center justify-between w-full mb-2 px-1">
-                  <span className="text-xs text-violet-400 font-semibold flex items-center gap-1">
+                  <span className="font-mono text-xs text-indigo-400 font-semibold flex items-center gap-1">
                     <Zap className="h-3 w-3 text-amber-400" />
-                    2. Instant Canvas Drape
+                    2. Canvas Drape
                   </span>
-                  <span className="text-[10px] bg-violet-600/30 text-violet-300 px-1.5 py-0.5 rounded font-mono">Local</span>
+                  <span className="text-[10px] bg-indigo-600/30 text-indigo-300 px-1.5 py-0.5 rounded font-mono">Local</span>
                 </div>
                 <img
                   src={lastResult.canvasImageUrl || currentResultImg}
                   alt="Instant Canvas Result"
-                  className="max-h-[460px] object-contain rounded-2xl"
+                  className="max-h-[460px] object-contain rounded-xl"
                 />
               </div>
-              <div className="rounded-3xl border border-purple-500/40 bg-black/60 p-3 flex flex-col items-center backdrop-blur-xl shadow-lg shadow-purple-900/20">
+              <div className="rounded-2xl border border-fuchsia-500/40 bg-[#07080d]/80 p-3 flex flex-col items-center backdrop-blur-xl shadow-lg shadow-fuchsia-950/20">
                 <div className="flex items-center justify-between w-full mb-2 px-1">
-                  <span className="text-xs text-purple-400 font-semibold flex items-center gap-1">
-                    <Cpu className="h-3 w-3 text-purple-400" />
-                    3. Generative AI (IDM-VTON)
+                  <span className="font-mono text-xs text-fuchsia-400 font-semibold flex items-center gap-1">
+                    <Cpu className="h-3 w-3 text-fuchsia-400" />
+                    3. AI Diffusion
                   </span>
-                  <span className="text-[10px] bg-purple-600/30 text-purple-300 px-1.5 py-0.5 rounded font-mono">Diffusion</span>
+                  <span className="text-[10px] bg-fuchsia-600/30 text-fuchsia-300 px-1.5 py-0.5 rounded font-mono">IDM-VTON</span>
                 </div>
                 <img
                   src={lastResult.aiImageUrl}
                   alt="Generative AI Result"
-                  className="max-h-[460px] object-contain rounded-2xl"
+                  className="max-h-[460px] object-contain rounded-xl"
                 />
               </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="rounded-3xl border border-white/10 bg-black/60 p-3 flex flex-col items-center backdrop-blur-xl">
-                <span className="text-xs text-gray-400 mb-2 font-semibold">1. Original Photo</span>
-                <img src={personImg} alt="Original" className="max-h-[460px] object-contain rounded-2xl" />
+              <div className="rounded-2xl border border-white/[0.08] bg-[#07080d]/80 p-3 flex flex-col items-center backdrop-blur-xl">
+                <span className="font-mono text-xs text-slate-400 mb-2 font-semibold">1. Original Photo</span>
+                <img src={personImg} alt="Original" className="max-h-[460px] object-contain rounded-xl" />
               </div>
-              <div className="rounded-3xl border border-violet-500/40 bg-black/60 p-3 flex flex-col items-center backdrop-blur-xl">
-                <span className="text-xs text-violet-400 mb-2 font-semibold flex items-center gap-1">
+              <div className="rounded-2xl border border-indigo-500/40 bg-[#07080d]/80 p-3 flex flex-col items-center backdrop-blur-xl">
+                <span className="font-mono text-xs text-indigo-400 mb-2 font-semibold flex items-center gap-1">
                   <Zap className="h-3 w-3 text-amber-400" />
-                  2. Instant Canvas Result
+                  2. Canvas Result
                 </span>
-                <img src={currentResultImg} alt="Try-On Result" className="max-h-[460px] object-contain rounded-2xl" />
+                <img src={currentResultImg} alt="Try-On Result" className="max-h-[460px] object-contain rounded-xl" />
               </div>
-              <div className="rounded-3xl border border-dashed border-purple-500/30 bg-purple-950/20 p-5 flex flex-col items-center justify-center text-center space-y-3 backdrop-blur-xl">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-600/20 text-purple-400 border border-purple-500/30">
+              <div className="rounded-2xl border border-dashed border-fuchsia-500/30 bg-fuchsia-950/20 p-5 flex flex-col items-center justify-center text-center space-y-3 backdrop-blur-xl">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-fuchsia-600/20 text-fuchsia-400 border border-fuchsia-500/30">
                   <Sparkles className="h-6 w-6" />
                 </div>
-                <h4 className="text-xs font-bold text-white">Compare with AI Diffusion</h4>
-                <p className="text-[11px] text-gray-400 max-w-[200px]">
+                <h4 className="font-display text-xs font-bold text-white">Compare with AI Diffusion</h4>
+                <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">
                   Synthesize deep cloth folds and realistic fabric shadows using IDM-VTON.
                 </p>
                 <button
                   type="button"
                   onClick={handleGenerateCloudAI}
                   disabled={isGeneratingCloudAI}
-                  className="mt-2 rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white shadow-lg hover:bg-purple-500 transition disabled:opacity-50"
+                  className="mt-2 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-4 py-2 text-xs font-bold text-white shadow-lg hover:opacity-95 transition disabled:opacity-50"
                 >
                   {isGeneratingCloudAI ? 'Synthesizing...' : 'Generate 3-Way AI Still'}
                 </button>
@@ -680,22 +695,22 @@ export const VirtualTryOnResultsPage: React.FC = () => {
 
           {/* Interactive Fitting Studio & Drape Controls */}
           {showFitStudio && (
-            <div className="rounded-3xl border border-violet-500/30 bg-gray-900/80 p-5 space-y-5 backdrop-blur-xl shadow-2xl transition-all duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+            <div className="aura-panel p-6 space-y-5 shadow-2xl relative">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.08] pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-violet-600/30 text-violet-400 border border-violet-500/40">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-indigo-600/30 text-indigo-400 border border-indigo-500/40">
                     <Wand2 className="h-4 w-4" />
                   </div>
-                  <h3 className="text-sm font-bold text-white">Interactive Fit Studio</h3>
-                  <span className="text-[11px] text-violet-400 font-semibold bg-violet-500/10 px-2 py-0.5 rounded-full border border-violet-500/20">
-                    Live Real-Time Drape
+                  <h3 className="font-display text-sm font-bold text-white">Interactive Fit Studio</h3>
+                  <span className="text-[10px] font-mono text-indigo-400 font-semibold bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
+                    LIVE REAL-TIME DRAPE
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handleResetFit}
-                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-white px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 transition"
+                    className="flex items-center gap-1 font-mono text-xs text-slate-400 hover:text-white px-2.5 py-1 rounded-lg border border-white/[0.08] bg-white/[0.04] transition"
                   >
                     <RotateCcw className="h-3 w-3" />
                     <span>Reset</span>
@@ -705,9 +720,9 @@ export const VirtualTryOnResultsPage: React.FC = () => {
 
               {/* Quick Framing Presets */}
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-300 flex items-center justify-between">
+                <label className="font-mono text-xs uppercase tracking-wider font-semibold text-slate-300 flex items-center justify-between">
                   <span>Photo Framing & Auto-Snap:</span>
-                  <span className="text-[11px] text-gray-400">Click if garment covers face or collar</span>
+                  <span className="text-[11px] text-slate-400 lowercase font-normal">Click if garment covers face or collar</span>
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <button
@@ -715,23 +730,23 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                     onClick={handlePresetPortrait}
                     className={`flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border transition ${
                       framingPreset === 'portrait'
-                        ? 'border-violet-500 bg-violet-600/30 text-white shadow-md'
-                        : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                        ? 'border-indigo-500 bg-indigo-600/25 text-white shadow-sm'
+                        : 'border-white/[0.08] bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]'
                     }`}
                   >
-                    <UserCheck className="h-3.5 w-3.5 text-violet-400" />
-                    <span>Portrait / Bust Shot</span>
+                    <UserCheck className="h-3.5 w-3.5 text-indigo-400" />
+                    <span>Portrait / Bust</span>
                   </button>
                   <button
                     type="button"
                     onClick={handlePresetAutoAi}
                     className={`flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border transition ${
                       framingPreset === 'auto'
-                        ? 'border-violet-500 bg-violet-600/30 text-white shadow-md'
-                        : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                        ? 'border-indigo-500 bg-indigo-600/25 text-white shadow-sm'
+                        : 'border-white/[0.08] bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]'
                     }`}
                   >
-                    <Sparkles className="h-3.5 w-3.5 text-violet-400" />
+                    <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
                     <span>AI Landmark Snap</span>
                   </button>
                   <button
@@ -739,11 +754,11 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                     onClick={handlePresetFullBody}
                     className={`flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border transition ${
                       framingPreset === 'full-body'
-                        ? 'border-violet-500 bg-violet-600/30 text-white shadow-md'
-                        : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                        ? 'border-indigo-500 bg-indigo-600/25 text-white shadow-sm'
+                        : 'border-white/[0.08] bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]'
                     }`}
                   >
-                    <Maximize2 className="h-3.5 w-3.5 text-violet-400" />
+                    <Maximize2 className="h-3.5 w-3.5 text-indigo-400" />
                     <span>Full Standing Fit</span>
                   </button>
                 </div>
@@ -752,13 +767,13 @@ export const VirtualTryOnResultsPage: React.FC = () => {
               {/* Sliders Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 {/* Vertical Position */}
-                <div className="space-y-1.5 bg-black/30 p-3 rounded-2xl border border-white/5">
+                <div className="space-y-1.5 bg-black/40 p-3.5 rounded-xl border border-white/[0.06]">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-gray-300 flex items-center gap-1">
-                      <MoveVertical className="h-3.5 w-3.5 text-violet-400" />
+                    <span className="font-semibold text-slate-300 flex items-center gap-1">
+                      <MoveVertical className="h-3.5 w-3.5 text-indigo-400" />
                       Vertical Position (Up / Down)
                     </span>
-                    <span className="font-mono text-violet-400">{offsetY > 0 ? `+${offsetY}px` : `${offsetY}px`}</span>
+                    <span className="font-mono text-indigo-400">{offsetY > 0 ? `+${offsetY}px` : `${offsetY}px`}</span>
                   </div>
                   <input
                     type="range"
@@ -767,13 +782,13 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                     step="5"
                     value={offsetY}
                     onChange={(e) => setOffsetY(Number(e.target.value))}
-                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                   />
-                  <div className="flex justify-between items-center text-[10px] text-gray-400 pt-0.5">
+                  <div className="flex justify-between items-center text-[10px] text-slate-400 pt-0.5">
                     <button
                       type="button"
                       onClick={() => setOffsetY((v) => Math.max(-250, v - 20))}
-                      className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-gray-300"
+                      className="px-2 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300"
                     >
                       ▲ Move Up
                     </button>
@@ -781,7 +796,7 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setOffsetY((v) => Math.min(350, v + 20))}
-                      className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-gray-300"
+                      className="px-2 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300"
                     >
                       ▼ Move Down
                     </button>
@@ -789,13 +804,13 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                 </div>
 
                 {/* Horizontal Position */}
-                <div className="space-y-1.5 bg-black/30 p-3 rounded-2xl border border-white/5">
+                <div className="space-y-1.5 bg-black/40 p-3.5 rounded-xl border border-white/[0.06]">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-gray-300 flex items-center gap-1">
-                      <MoveHorizontal className="h-3.5 w-3.5 text-violet-400" />
+                    <span className="font-semibold text-slate-300 flex items-center gap-1">
+                      <MoveHorizontal className="h-3.5 w-3.5 text-indigo-400" />
                       Horizontal Center (Left / Right)
                     </span>
-                    <span className="font-mono text-violet-400">{offsetX > 0 ? `+${offsetX}px` : `${offsetX}px`}</span>
+                    <span className="font-mono text-indigo-400">{offsetX > 0 ? `+${offsetX}px` : `${offsetX}px`}</span>
                   </div>
                   <input
                     type="range"
@@ -804,14 +819,14 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                     step="5"
                     value={offsetX}
                     onChange={(e) => setOffsetX(Number(e.target.value))}
-                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                   />
-                  <div className="flex justify-between items-center text-[10px] text-gray-400 pt-0.5">
+                  <div className="flex justify-between items-center text-[10px] text-slate-400 pt-0.5">
                     <span>← Left</span>
                     <button
                       type="button"
                       onClick={() => setOffsetX(0)}
-                      className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-gray-300"
+                      className="px-2 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300"
                     >
                       Center
                     </button>
@@ -820,13 +835,13 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                 </div>
 
                 {/* Garment Scale & Size */}
-                <div className="space-y-1.5 bg-black/30 p-3 rounded-2xl border border-white/5">
+                <div className="space-y-1.5 bg-black/40 p-3.5 rounded-xl border border-white/[0.06]">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-gray-300 flex items-center gap-1">
-                      <Maximize2 className="h-3.5 w-3.5 text-violet-400" />
+                    <span className="font-semibold text-slate-300 flex items-center gap-1">
+                      <Maximize2 className="h-3.5 w-3.5 text-indigo-400" />
                       Garment Size / Proportions
                     </span>
-                    <span className="font-mono text-violet-400">{Math.round(scale * 100)}%</span>
+                    <span className="font-mono text-indigo-400">{Math.round(scale * 100)}%</span>
                   </div>
                   <input
                     type="range"
@@ -835,7 +850,7 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                     step="0.02"
                     value={scale}
                     onChange={(e) => setScale(Number(e.target.value))}
-                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                   />
                   {/* Quick Size Tags */}
                   <div className="flex gap-1 justify-between pt-1">
@@ -851,10 +866,10 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                         key={sz.label}
                         type="button"
                         onClick={() => handleSizeSelect(sz.val, sz.label)}
-                        className={`flex-1 py-0.5 text-[10px] font-bold rounded ${
+                        className={`flex-1 py-1 text-[10px] font-mono font-bold rounded-lg ${
                           Math.abs(scale - sz.val) < 0.04
-                            ? 'bg-violet-600 text-white'
-                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                            ? 'bg-indigo-600 text-white shadow-sm'
+                            : 'bg-white/[0.04] text-slate-400 hover:bg-white/[0.08]'
                         }`}
                       >
                         {sz.label}
@@ -864,17 +879,17 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                 </div>
 
                 {/* Silhouette & Cut */}
-                <div className="space-y-1.5 bg-black/30 p-3 rounded-2xl border border-white/5">
+                <div className="space-y-1.5 bg-black/40 p-3.5 rounded-xl border border-white/[0.06]">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-gray-300 flex items-center gap-1">
-                      <RotateCw className="h-3.5 w-3.5 text-violet-400" />
+                    <span className="font-semibold text-slate-300 flex items-center gap-1">
+                      <RotateCw className="h-3.5 w-3.5 text-indigo-400" />
                       Garment Silhouette / Fit
                     </span>
-                    <span className="font-mono text-violet-400">
+                    <span className="font-mono text-indigo-400">
                       {widthFactor < 0.95 ? 'Slim' : widthFactor > 1.2 ? 'Oversized' : widthFactor > 1.05 ? 'Relaxed' : 'Regular'}
                     </span>
                   </div>
-                  <div className="grid grid-cols-4 gap-1 pt-1">
+                  <div className="grid grid-cols-4 gap-1.5 pt-1">
                     {[
                       { label: 'Slim', val: 0.88 },
                       { label: 'Regular', val: 1.00 },
@@ -887,8 +902,8 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                         onClick={() => handleSilhouetteSelect(sil.val, sil.label)}
                         className={`py-1 text-[10px] font-bold rounded-lg border transition ${
                           Math.abs(widthFactor - sil.val) < 0.05
-                            ? 'border-violet-500 bg-violet-600 text-white'
-                            : 'border-white/5 bg-white/5 text-gray-400 hover:bg-white/10'
+                            ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm'
+                            : 'border-white/[0.06] bg-white/[0.03] text-slate-400 hover:bg-white/[0.06]'
                         }`}
                       >
                         {sil.label}
@@ -897,7 +912,7 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                   </div>
                   {/* Rotation adjustment */}
                   <div className="flex items-center justify-between text-[11px] pt-1">
-                    <span className="text-gray-400">Tilt Angle:</span>
+                    <span className="text-slate-400">Tilt Angle:</span>
                     <input
                       type="range"
                       min="-20"
@@ -905,9 +920,9 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                       step="1"
                       value={rotation}
                       onChange={(e) => setRotation(Number(e.target.value))}
-                      className="w-28 h-1 bg-white/10 rounded appearance-none accent-violet-500"
+                      className="w-28 h-1 bg-white/10 rounded appearance-none accent-indigo-500"
                     />
-                    <span className="font-mono text-gray-300 w-8 text-right">{rotation}°</span>
+                    <span className="font-mono text-slate-300 w-8 text-right">{rotation}°</span>
                   </div>
                 </div>
               </div>
@@ -915,37 +930,37 @@ export const VirtualTryOnResultsPage: React.FC = () => {
           )}
 
           {/* Fit Honesty & Simulation Disclaimer */}
-          <p className="text-[11px] text-gray-400 leading-relaxed bg-white/5 border border-white/5 rounded-2xl p-3.5 backdrop-blur-md">
+          <p className="text-[11px] text-slate-400 leading-relaxed bg-white/[0.02] border border-white/[0.08] rounded-2xl p-4 backdrop-blur-md">
             ℹ️ <strong>Fit Honesty & Visual Approximation:</strong> This try-on is an automated geometric body drape preview, not an exact tailoring measurement. Real-world fabric stretch and drape may vary. Use the Fit Studio sliders to evaluate tight ↔ relaxed silhouette preferences.
           </p>
         </div>
 
         {/* Right: Selected Product Details & Next Steps (4 cols) */}
         <div className="lg:col-span-4 space-y-5">
-          <div className="rounded-3xl border border-white/10 bg-gray-900/70 p-5 space-y-4 backdrop-blur-xl shadow-2xl">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
+          <div className="aura-panel p-6 space-y-5 shadow-2xl relative">
+            <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-slate-400 pb-3 border-b border-white/[0.08]">
               Tried-On Garment
             </h3>
 
             <div className="flex items-center gap-3">
-              <div className={`h-20 w-20 rounded-2xl bg-gradient-to-br ${garment.swatch} p-2 flex items-center justify-center flex-shrink-0 shadow-inner`}>
+              <div className={`h-20 w-20 rounded-2xl bg-gradient-to-br ${garment.swatch} p-2 flex items-center justify-center flex-shrink-0 shadow-inner overflow-hidden`}>
                 <img src={garment.imageUrl} alt={garment.name} className="h-full w-full object-contain" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-white line-clamp-1">{garment.name}</h4>
-                <p className="text-xs text-violet-400 font-semibold">{garment.brand}</p>
-                <p className="text-xs text-gray-300 font-bold mt-1">₹{garment.priceINR}</p>
+                <h4 className="font-display text-sm font-bold text-white line-clamp-1">{garment.name}</h4>
+                <p className="text-xs text-indigo-400 font-semibold">{garment.brand}</p>
+                <p className="font-mono text-xs text-slate-200 font-bold mt-1">₹{garment.priceINR.toLocaleString('en-IN')}</p>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="space-y-2 pt-2 border-t border-white/10">
+            <div className="space-y-2 pt-2 border-t border-white/[0.08]">
               {/* Photoreal Still Generator */}
               <button
                 type="button"
                 onClick={handleGeneratePhotorealStill}
                 disabled={isGeneratingPhotoreal}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 py-3 text-xs font-bold text-amber-300 hover:from-amber-500/30 hover:to-orange-500/30 transition shadow-lg shadow-amber-900/20 disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 py-3 text-xs font-bold text-amber-300 hover:from-amber-500/30 hover:to-orange-500/30 transition shadow-lg shadow-amber-950/40 disabled:opacity-50"
               >
                 <Sparkles className="h-4 w-4 text-amber-400" />
                 <span>{isGeneratingPhotoreal ? 'Synthesizing...' : '✨ Generate Photoreal Still'}</span>
@@ -954,7 +969,7 @@ export const VirtualTryOnResultsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSaveLook}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-violet-600 py-3 text-xs font-bold text-white hover:bg-violet-500 shadow-lg shadow-violet-600/30 transition"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 py-3 text-xs font-bold text-white hover:opacity-95 shadow-lg shadow-indigo-600/30 transition"
               >
                 <Heart className="h-4 w-4" />
                 <span>Save Look to Gallery</span>
@@ -963,16 +978,16 @@ export const VirtualTryOnResultsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleShareLook}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] py-2.5 text-xs font-semibold text-slate-200 hover:bg-white/[0.08] transition backdrop-blur-md"
               >
-                <Share2 className="h-4 w-4 text-violet-400" />
+                <Share2 className="h-4 w-4 text-indigo-400" />
                 <span>Share Look (Privacy-Safe Link)</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleDownload}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] py-2.5 text-xs font-semibold text-slate-200 hover:bg-white/[0.08] transition backdrop-blur-md"
               >
                 <Download className="h-4 w-4" />
                 <span>Download Result Image</span>
@@ -981,7 +996,7 @@ export const VirtualTryOnResultsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleCompareOutfits}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] py-2.5 text-xs font-semibold text-slate-200 hover:bg-white/[0.08] transition backdrop-blur-md"
               >
                 <Columns2 className="h-4 w-4" />
                 <span>Compare Outfits</span>
@@ -993,22 +1008,22 @@ export const VirtualTryOnResultsPage: React.FC = () => {
                   toast.success(`Opening ${garment.name} in Live Camera fitting room...`);
                   navigate('live');
                 }}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-violet-500/40 bg-violet-600/20 py-2.5 text-xs font-bold text-violet-300 hover:bg-violet-600/30 transition backdrop-blur-md shadow-sm"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-600/20 py-2.5 text-xs font-bold text-indigo-300 hover:bg-indigo-600/30 transition backdrop-blur-md shadow-sm"
               >
-                <Camera className="h-4 w-4 text-violet-400" />
+                <Camera className="h-4 w-4 text-indigo-400" />
                 <span>Try this Garment in Live Camera</span>
               </button>
             </div>
           </div>
 
           {/* Next Steps */}
-          <div className="rounded-3xl border border-white/10 bg-gray-900/40 p-5 space-y-3 backdrop-blur-xl">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300">Try Another Style</h4>
+          <div className="aura-panel p-5 space-y-3">
+            <h4 className="font-mono text-xs font-bold uppercase tracking-wider text-slate-300">Try Another Experience</h4>
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => navigate('live')}
-                className="rounded-xl border border-violet-500/30 bg-violet-600/10 py-2.5 text-xs font-semibold text-violet-300 hover:bg-violet-600/20 transition text-center backdrop-blur-md flex items-center justify-center gap-1"
+                className="rounded-xl border border-fuchsia-500/30 bg-fuchsia-600/10 py-2.5 text-xs font-semibold text-fuchsia-300 hover:bg-fuchsia-600/20 transition text-center backdrop-blur-md flex items-center justify-center gap-1"
               >
                 <Camera className="h-3.5 w-3.5" />
                 <span>Live</span>
@@ -1016,14 +1031,14 @@ export const VirtualTryOnResultsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('gallery')}
-                className="rounded-xl bg-white/10 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition text-center backdrop-blur-md"
+                className="rounded-xl bg-white/[0.06] py-2.5 text-xs font-semibold text-white hover:bg-white/[0.1] transition text-center backdrop-blur-md border border-white/[0.08]"
               >
-                Closet
+                Wardrobe
               </button>
               <button
                 type="button"
                 onClick={() => navigate('photo-upload')}
-                className="rounded-xl border border-white/10 py-2.5 text-xs font-semibold text-gray-300 hover:bg-white/10 transition text-center backdrop-blur-md"
+                className="rounded-xl border border-white/[0.08] py-2.5 text-xs font-semibold text-slate-300 hover:bg-white/[0.08] transition text-center backdrop-blur-md"
               >
                 Photo
               </button>

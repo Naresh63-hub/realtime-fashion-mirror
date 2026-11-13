@@ -55,7 +55,7 @@ const PageRenderer: React.FC = () => {
 
 const MainLayout: React.FC = () => {
   return (
-    <div className="flex min-h-screen flex-col bg-gray-950 text-gray-100 selection:bg-violet-600 selection:text-white">
+    <div className="flex min-h-screen flex-col bg-[#07080d] text-slate-100 selection:bg-indigo-600 selection:text-white font-sans antialiased relative">
       {/* Toast Notifications */}
       <Toaster
         position="top-right"
@@ -64,10 +64,12 @@ const MainLayout: React.FC = () => {
         closeButton
         toastOptions={{
           style: {
-            background: 'rgba(17, 24, 39, 0.85)',
-            backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
+            background: 'rgba(13, 15, 24, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
             color: '#fff',
+            borderRadius: '16px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6)',
           },
         }}
       />

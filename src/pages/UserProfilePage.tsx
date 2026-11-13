@@ -31,7 +31,7 @@ export const UserProfilePage: React.FC = () => {
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.download = `ai-fashion-mirror-export-${Date.now()}.json`;
+    a.download = `aura-fashion-mirror-export-${Date.now()}.json`;
     a.href = url;
     a.click();
     URL.revokeObjectURL(url);
@@ -47,133 +47,143 @@ export const UserProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 space-y-8">
+    <div className="relative mx-auto max-w-4xl px-4 py-8 sm:px-6 space-y-8 animate-fade-in">
+      {/* Background ambient lighting */}
+      <div className="absolute top-1/4 left-1/3 -translate-x-1/2 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-fuchsia-500/10 rounded-full blur-3xl pointer-events-none" />
+
       {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-600/20 text-violet-400 border border-violet-500/30">
-            <User className="h-4 w-4" />
-          </div>
-          <span>User Profile & Statistics</span>
+      <div className="border-b border-white/[0.08] pb-6">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="aura-pill bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <User className="h-3 w-3" />
+            <span>STUDIO IDENTITY</span>
+          </span>
+          <span className="aura-pill bg-white/[0.04] text-slate-400 border border-white/[0.08]">
+            CLIENT PROFILE
+          </span>
+        </div>
+        <h1 className="font-display font-extrabold text-3xl sm:text-4xl text-white tracking-tight">
+          Client Profile & Telemetry
         </h1>
-        <p className="text-xs sm:text-sm text-gray-400 mt-1">
-          Manage your local profile identity, device preferences, and private data controls.
+        <p className="text-sm text-slate-400 mt-1 max-w-xl leading-relaxed">
+          Manage your personal fitting profile identity, review session statistics, and export or purge device data.
         </p>
       </div>
 
       {/* Profile Overview Card */}
-      <div className="rounded-3xl border border-white/10 bg-gray-900/70 p-6 flex flex-col sm:flex-row items-center gap-6 backdrop-blur-xl shadow-2xl">
-        <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 text-3xl font-bold text-white shadow-xl shadow-violet-900/50">
+      <div className="aura-panel p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 shadow-2xl relative">
+        <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-fuchsia-600 text-3xl font-display font-black text-white shadow-xl shadow-indigo-950/60 ring-2 ring-white/10">
           {name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 text-center sm:text-left">
           <div className="flex items-center justify-center sm:justify-start gap-2">
-            <h2 className="text-xl font-bold text-white">{profile.name}</h2>
-            <span className="rounded-full bg-violet-500/20 px-2.5 py-0.5 text-[10px] font-semibold text-violet-300 border border-violet-500/30">
-              Local Tier
+            <h2 className="font-display font-bold text-2xl text-white">{profile.name}</h2>
+            <span className="rounded-full bg-indigo-500/15 px-2.5 py-0.5 text-[10px] font-mono text-indigo-300 border border-indigo-500/25">
+              LOCAL ATELIER TIER
             </span>
           </div>
-          <p className="text-xs text-gray-400 mt-1">
-            Member since {new Date(profile.memberSince).toLocaleDateString()}
+          <p className="font-mono text-xs text-slate-400 mt-1">
+            Studio member since {new Date(profile.memberSince).toLocaleDateString()}
           </p>
         </div>
       </div>
 
       {/* Try-On Statistics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-3xl border border-white/10 bg-gray-900/60 p-5 backdrop-blur-xl shadow-xl">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600/20 text-violet-400 border border-violet-500/30 mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <div className="aura-card p-6 shadow-xl">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 mb-3">
             <Activity className="h-5 w-5" />
           </div>
-          <p className="text-3xl font-black text-white">{profile.totalTryOns || savedLooks.length}</p>
-          <p className="text-xs text-gray-400 mt-1">Total Try-On Sessions</p>
+          <p className="font-mono text-3xl font-black text-white">{profile.totalTryOns || savedLooks.length}</p>
+          <p className="font-mono text-xs text-slate-400 mt-1 uppercase tracking-wider">Total Fitting Sessions</p>
         </div>
 
         <div
           onClick={() => navigate('saved')}
-          className="rounded-3xl border border-white/10 bg-gray-900/60 p-5 cursor-pointer hover:border-violet-500/40 transition backdrop-blur-xl shadow-xl group"
+          className="aura-card p-6 cursor-pointer transition shadow-xl group hover:border-rose-500/40"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-600/20 text-red-400 border border-red-500/30 mb-3 group-hover:scale-105 transition">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-600/20 text-rose-400 border border-rose-500/30 mb-3 group-hover:scale-105 transition">
             <Heart className="h-5 w-5 fill-current" />
           </div>
-          <p className="text-3xl font-black text-white">{savedLooks.length}</p>
-          <p className="text-xs text-gray-400 mt-1">Saved Looks in Gallery</p>
+          <p className="font-mono text-3xl font-black text-white">{savedLooks.length}</p>
+          <p className="font-mono text-xs text-slate-400 mt-1 uppercase tracking-wider">Saved Looks in Archive</p>
         </div>
 
         <div
           onClick={() => navigate('gallery')}
-          className="rounded-3xl border border-white/10 bg-gray-900/60 p-5 cursor-pointer hover:border-violet-500/40 transition backdrop-blur-xl shadow-xl group"
+          className="aura-card p-6 cursor-pointer transition shadow-xl group hover:border-amber-500/40"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-600/20 text-amber-400 border border-amber-500/30 mb-3 group-hover:scale-105 transition">
             <Star className="h-5 w-5" />
           </div>
-          <p className="text-3xl font-black text-white">{favoriteIds.length}</p>
-          <p className="text-xs text-gray-400 mt-1">Favorited Clothing Items</p>
+          <p className="font-mono text-3xl font-black text-white">{favoriteIds.length}</p>
+          <p className="font-mono text-xs text-slate-400 mt-1 uppercase tracking-wider">Favorited Silhouettes</p>
         </div>
       </div>
 
       {/* Edit Details Form */}
-      <form onSubmit={handleSaveProfile} className="rounded-3xl border border-white/10 bg-gray-900/70 p-6 space-y-4 backdrop-blur-xl shadow-2xl">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-300">
-          Profile Information
+      <form onSubmit={handleSaveProfile} className="aura-panel p-6 sm:p-8 space-y-5 shadow-2xl relative">
+        <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-slate-300 pb-3 border-b border-white/[0.08]">
+          Profile Identity
         </h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-1">Display Name</label>
+            <label className="block font-mono text-xs font-semibold text-slate-400 mb-2">Display Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-2xl border border-white/10 bg-black/50 px-4 py-2.5 text-xs text-white focus:border-violet-500 focus:outline-none transition"
+              className="w-full rounded-xl border border-white/[0.1] bg-[#0d0f18] px-4 py-2.5 text-xs text-white focus:border-indigo-500 focus:outline-none transition"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-1">Email Address (Optional)</label>
+            <label className="block font-mono text-xs font-semibold text-slate-400 mb-2">Email Address (Optional)</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="user@example.com"
-              className="w-full rounded-2xl border border-white/10 bg-black/50 px-4 py-2.5 text-xs text-white focus:border-violet-500 focus:outline-none transition"
+              className="w-full rounded-xl border border-white/[0.1] bg-[#0d0f18] px-4 py-2.5 text-xs text-white focus:border-indigo-500 focus:outline-none transition"
             />
           </div>
         </div>
 
         <button
           type="submit"
-          className="rounded-xl bg-violet-600 px-6 py-2.5 text-xs font-semibold text-white hover:bg-violet-500 shadow-lg shadow-violet-600/30 transition"
+          className="rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-600/30 hover:opacity-95 transition"
         >
           Update Profile
         </button>
       </form>
 
-      {/* Privacy and Data Controls (Section 10) */}
-      <div className="rounded-3xl border border-white/10 bg-gray-900/70 p-6 space-y-4 backdrop-blur-xl shadow-2xl">
-        <div className="flex items-center gap-2">
+      {/* Privacy and Data Controls */}
+      <div className="aura-panel p-6 sm:p-8 space-y-4 shadow-2xl relative">
+        <div className="flex items-center gap-2 pb-3 border-b border-white/[0.08]">
           <ShieldCheck className="h-4 w-4 text-emerald-400" />
-          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-300">
+          <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-slate-200">
             Privacy & Data Sovereignty
           </h3>
         </div>
-        <p className="text-xs text-gray-400 leading-relaxed">
-          AI Fashion Mirror is built on a privacy-first architecture. All camera video frames and personal photographs are processed strictly within your local browser sandbox and never shared or retained without your explicit consent.
+        <p className="text-xs text-slate-400 leading-relaxed">
+          AURA is engineered on a strict privacy-first foundation. Camera video streams and uploaded portraits remain entirely inside your device sandbox during real-time tracking, and are never shared or retained without your explicit permission.
         </p>
 
         <div className="flex flex-wrap gap-3 pt-2">
           <button
             type="button"
             onClick={handleExportData}
-            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold text-gray-200 hover:bg-white/10 transition backdrop-blur-md"
+            className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-xs font-semibold text-slate-200 hover:bg-white/[0.08] transition backdrop-blur-md"
           >
-            <Download className="h-3.5 w-3.5" />
-            <span>Export All My Data (JSON)</span>
+            <Download className="h-3.5 w-3.5 text-indigo-400" />
+            <span>Export All Data Archive (JSON)</span>
           </button>
           <button
             type="button"
             onClick={handleDeleteAllData}
-            className="flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-950/20 px-4 py-2.5 text-xs font-semibold text-red-400 hover:bg-red-950/40 transition"
+            className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-950/20 px-4 py-2.5 text-xs font-semibold text-rose-300 hover:bg-rose-950/40 transition"
           >
             <Trash2 className="h-3.5 w-3.5" />
             <span>Delete All Local Data & Purge Storage</span>
