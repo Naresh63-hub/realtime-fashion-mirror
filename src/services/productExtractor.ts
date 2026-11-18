@@ -43,7 +43,18 @@ export function getBackendApiUrl(): string {
     return backendUrl.replace(/\/+$/, '');
   }
 
-  // 3. Fall back to APP_CONFIG centralized setting or local default
+  // 3. In browser over HTTPS (production Vercel deployment), use current origin for serverless functions
+  if (
+    typeof window !== 'undefined' &&
+    window.location &&
+    window.location.protocol === 'https:' &&
+    window.location.origin &&
+    window.location.origin.startsWith('https://')
+  ) {
+    return window.location.origin.replace(/\/+$/, '');
+  }
+
+  // 4. Fall back to APP_CONFIG centralized setting or local default
   return (APP_CONFIG.API.BASE_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
 }
 

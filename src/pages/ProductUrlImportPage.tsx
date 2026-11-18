@@ -48,9 +48,13 @@ export const ProductUrlImportPage: React.FC = () => {
       setBackendStatus('checking');
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3500);
-      const res = await fetch(`${urlToCheck.replace(/\/+$/, '')}/health`, { signal: controller.signal });
+      const base = urlToCheck.startsWith('http') ? urlToCheck.replace(/\/+$/, '') : '';
+      let res = await fetch(`${base}/api/health`, { signal: controller.signal }).catch(() => null);
+      if (!res || !res.ok) {
+        res = await fetch(`${base}/health`, { signal: controller.signal }).catch(() => null);
+      }
       clearTimeout(timeout);
-      if (res.ok) {
+      if (res && res.ok) {
         setBackendStatus('online');
         return true;
       }
@@ -398,12 +402,22 @@ export const ProductUrlImportPage: React.FC = () => {
                 )}
               </div>
             </div>
-            {extracted.price && (
-              <div className="sm:text-right">
-                <span className="font-mono text-xs text-slate-400">Retail Price</span>
-                <p className="font-mono text-2xl font-black text-white">₹{extracted.price.toLocaleString('en-IN')}</p>
+            <div className="sm:text-right">
+              <span className="font-mono text-xs text-slate-400">Retail Price (₹)</span>
+              <div className="flex items-center sm:justify-end gap-1.5 mt-1">
+                <span className="font-mono text-xl font-bold text-slate-400">₹</span>
+                <input
+                  type="number"
+                  value={extracted.price || 0}
+                  onChange={(e) => {
+                    const newPrice = parseFloat(e.target.value) || 0;
+                    setExtracted({ ...extracted, price: newPrice });
+                  }}
+                  className="w-28 rounded-xl border border-white/[0.15] bg-black/60 px-3 py-1.5 text-xl font-black text-white font-mono focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-right shadow-inner"
+                  title="Click to edit or adjust retail price"
+                />
               </div>
-            )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
@@ -414,14 +428,38 @@ export const ProductUrlImportPage: React.FC = () => {
                 alt={extracted.title}
                 className="max-h-56 max-w-full object-contain drop-shadow-2xl"
               />
-              <button
-                type="button"
-                onClick={() => fallbackUploadRef.current?.click()}
-                className="mt-3 flex items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/[0.08] transition shadow-sm"
-              >
-                <UploadCloud className="h-3.5 w-3.5 text-fuchsia-400" />
-                <span>Upload Custom Garment Photo</span>
-              </button>
+              <div className="mt-3 flex flex-wrap gap-2 justify-center">
+                <button
+                  type="button"
+                  onClick={() => fallbackUploadRef.current?.click()}
+                  className="flex items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/[0.08] transition shadow-sm"
+                  title="Upload a saved photo from your device"
+                >
+                  <UploadCloud className="h-3.5 w-3.5 text-fuchsia-400" />
+                  <span>Upload Photo</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const promptUrl = window.prompt('Paste direct product photo address (e.g. from Amazon/Myntra):');
+                    if (promptUrl && promptUrl.trim()) {
+                      const trimmed = promptUrl.trim();
+                      setSelectedImage(trimmed);
+                      setExtracted({
+                        ...extracted,
+                        selectedImageUrl: trimmed,
+                        images: [trimmed, ...extracted.images.filter((x) => x !== trimmed)],
+                      });
+                      toast.success('Updated garment image to custom photo URL!');
+                    }
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/[0.08] transition shadow-sm"
+                  title="Paste any image URL copied from Amazon or store"
+                >
+                  <Link2 className="h-3.5 w-3.5 text-indigo-400" />
+                  <span>Paste Image URL</span>
+                </button>
+              </div>
             </div>
 
             {/* Product details & Available Images */}
